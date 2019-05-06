@@ -15,5 +15,6 @@ new.date<-new.date-(sort(new.date))[1]
 #sort(unique(new.date))
 
 #We add this column to the dataset instead of the original one
-
-
+kc_house[1]<-new.date
+kc_house
+dim(kc_house)

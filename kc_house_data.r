@@ -1,7 +1,8 @@
 kc_house<-read.csv("kc_house_data.csv")
 attach(kc_house)
 
-summary(kc_house)
+
+#TODO: dove abbiamo preso i dati, spiegare ogni colonna cosa significa
 
 #check the dimension of the dataset
 dim(kc_house)
@@ -61,7 +62,9 @@ kc_house["yr_renovated"]<-yr_last_renovation
 colnames(kc_house)[15]<-"yr_last_renovation"
 
 #move the target feature (price) to the last column
-
+kc_house<-kc_house[,c("date", "bedrooms", "bathrooms", "sqft_living","sqft_lot", "floors", "waterfront","view","condition",
+           "grade", "sqft_above", "sqft_basement", "yr_built", "yr_last_renovation", "zipcode",  "lat", "long","sqft_living15", 
+           "sqft_lot15", "price")]
 
 
 ################################EXPLORING DATA
@@ -76,7 +79,49 @@ colnames(kc_house)[15]<-"yr_last_renovation"
 #Moreover, also the column "floors" has float values: this is because there can be "partial" (half) floors (like
 #the mansard) that cannot be considered as a whole floor. 
 #Condition is a value from 1 to 5 that expresses the condition state of the house.
+#sqft_living is the sum of sqft_above + sqft_basement 
 
+#we start the exploration of the data with an overall numerical summary
+summary(kc_house)
 
+#we notice that the maximum number of bedrooms is 33, a very high number. Moreover we note that this house
+#must have also 33*1.75 bathrooms, which is 57 total bathrooms, i.e. 90 total rooms (excluding other possible
+#spaces.)
+#We want to see the other values of that row, that are the values of that house.
+kc_house[bedrooms==33,]
+boxplot(bedrooms)
+# We note that the total living space is 1620 square feet, equal to about 150 m^2. This would imply that each room has a mean of 1.66 m^2,
+#which is clearly impossible. So, there must be some errors in the reporting of the data (the number of 
+#bedrooms could be 3 for example).
+
+#So, we decide to delete that row.
+
+kc_house<-kc_house[bedrooms<33,]
+dim(kc_house)
+
+#In general, we want to check the mean square footage of the rooms per each house, to see if there are 
+#other unlikely values as the previous one.
+detach(kc_house)
+attach(kc_house)
+mean_sqm<-(sqft_living/(bedrooms+(bedrooms*bathrooms)))/10.764
+length(mean_sqm)
+#we note that there are some infinite values due to the fact that there are no bedrooms and bathrooms in 
+#that building. So, we want to boxplot the mean_sqft excluding those houses.
+
+boxplot(mean_sqm[mean_sqm<Inf])
+min(mean_sqm)
+
+#We see that now the minimum value of the mean square meters of the rooms in a house is 3 times the 
+#previous, so we have no evidence that this is an unlikely value.
+
+#We want to see the type of houses we're dealing with; thus, we check the distribution of the grade of the
+#houses and we compare it to a normal distribution.
+hist(grade, breaks =12)
+qqnorm(grade)
+#We can see that the distribution of grade is close to a normal one, with the mean between 7 and 8 (7.65).
+#Other feature, like sqft_living, are not distributed as a normal and we can see it by plotting its values.
+qqnorm(sqft_living)
+
+##########################REGRESSION MODEL
 
 

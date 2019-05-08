@@ -124,4 +124,24 @@ qqnorm(sqft_living)
 
 ##########################REGRESSION MODEL
 
+# MAP
+
+# import required libraries
+library(ggplot2)
+library(ggmap)
+
+# Set location bounds (King County)
+location = c(-123, 47, -121, 48)
+# Fetch the map (osm = OpenStreetMap)
+kc = get_map(location=location, source="osm")
+# Draw the map
+map.kc = ggmap(kc)
+# Add the points layer
+map.kc = map.kc + geom_point(data = kc_house, aes(x = long, y = lat), size = .0001)
+# Plot map
+map.kc
+
+# Add the labels
+# portlandMap + geom_text(data = stores, aes(label = name, x = longitude+.001, y = latitude), hjust = 0)
+
 

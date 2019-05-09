@@ -186,3 +186,37 @@ kc_house[20]<-new.price
 kc_house
 model<-lm(price ~ .-sqft_basement, data=kc_house)
 summary(model)
+
+#Splitting the whole dataset into training and test set
+
+#Import caret library
+library(caret)
+#Define the random seed (otherwise we cannot repeat the exactly same experiment)
+set.seed(42)
+#Define training indexes
+idx.train<-createDataPartition(kc_house$price, p=.80, list=FALSE)
+#Define train and test subsets
+train<-kc_house[idx.train,]
+test<-kc_house[-idx.train,]
+#Check length of train and test set (percentage)
+dim(train)[1]/dim(kc_house)[1]
+dim(test)[1]/dim(kc_house)[1]
+#Check price values in train set
+summary(train$price)
+#Check price values in test set
+summary(test$price)
+
+#Define k for k-fold cressvalidation
+k<-10
+#Split train data in K-fold split
+folds<-createFolds(train$price, k=k, list=FALSE, returnTrain=FALSE)
+#Loops through every fold
+for (i in 1:k) {
+  #Get validation set for i-th iteration
+  idx.valid<-which(folds==i, arr.ind=TRUE)
+  #Get validation set
+  train[idx.valid,]
+  #Get training set, without validation set
+  train[-idx.valid,]
+}
+  

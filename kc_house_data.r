@@ -14,7 +14,7 @@ new.date<-new.date-(sort(new.date))[1]
 #sort(unique(new.date))
 
 #We add this column to the dataset instead of the original one
-kc_house[2]<-new.date
+kc_house[2]<-as.numeric(new.date)
 kc_house
 dim(kc_house)
 
@@ -122,8 +122,6 @@ qqnorm(grade)
 #Other feature, like sqft_living, are not distributed as a normal and we can see it by plotting its values.
 qqnorm(sqft_living)
 
-##########################REGRESSION MODEL
-
 # MAP
 
 # import required libraries
@@ -131,17 +129,60 @@ library(ggplot2)
 library(ggmap)
 
 # Set location bounds (King County)
-location = c(-123, 47, -121, 48)
+location <- c(-140, 35, -90, 57)
 # Fetch the map (osm = OpenStreetMap)
-kc = get_map(location=location, source="osm")
+kc <- get_map(location=location, source="osm")
 # Draw the map
-map.kc = ggmap(kc)
+map.kc <- ggmap(kc)
 # Add the points layer
-map.kc = map.kc + geom_point(data = kc_house, aes(x = long, y = lat), size = .0001)
+map.kc <- map.kc + geom_point(data = kc_house, aes(x = long, y = lat), size = .0001)
 # Plot map
 map.kc
 
-# Add the labels
-# portlandMap + geom_text(data = stores, aes(label = name, x = longitude+.001, y = latitude), hjust = 0)
+#more zoommed graph
+# Set location bounds (King County)
+location <- c(-123.25, 47.15, -121.25, 47.9)
+# Fetch the map (osm = OpenStreetMap)
+kc <- get_map(location=location, source="osm")
+# Draw the map
+map.kc <- ggmap(kc)
+# Add the points layer
+map.kc <- map.kc + geom_point(data = kc_house, aes(x = long, y = lat), size = .0001)
+# Plot map
+map.kc
+
+##########################REGRESSION MODEL
+model<-lm(price ~ ., data=kc_house)
+summary(model)
+
+#From the summary of the model we have just applied we can see that the coefficient of the column 
+#"sqft_basement" are labeled as NA: this is because there is a collinearity between that feature and 
+#the two column "sqft_living" and "sqft_above". In fact, "sqft_basement" = "sqft_living" - "sqft_above".
+#We give the proof of that:
+
+sqft_diff<-sqft_living-(sqft_basement + sqft_above)
+any(sqft_diff!=0)
+
+#As we notice, all the values in "sqft_diff" are zero.
+#So, for the prediction we get rid of the feature "sqft_basement" because it doesn't add any valuable 
+#information wrt to what we know from the other two columns.
+
+model<-glm(price ~ .-sqft_basement, data=kc_house)
+summary(model)
+
+residuals(model)
+hist(residuals(model), breaks = 200)
+qqnorm(residuals(model))
+
+model<-lm(price ~ .-sqft_basement-floors, data=kc_house)
+summary(model)
 
 
+#try to standardize the price to see the difference (CUT OFF THIS PART)
+new.price<-((price-mean(price))/sd(price))
+new.price
+plot(new.price)
+kc_house[20]<-new.price
+kc_house
+model<-lm(price ~ .-sqft_basement, data=kc_house)
+summary(model)

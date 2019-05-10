@@ -151,6 +151,7 @@ map.kc <- map.kc + geom_point(data = kc_house, aes(x = long, y = lat), size = .0
 # Plot map
 map.kc
 
+
 ##########################REGRESSION MODEL
 model<-lm(price ~ ., data=kc_house)
 summary(model)
@@ -189,110 +190,177 @@ any(sqft_diff!=0)
 
 #we delete the column sqft_basement because it add no infos and it can be add in future if we want (lossless delete)
 kc_house<-kc_house[,-12]
-kc_house[19]<-(kc_house[19]/1000)
-dim(kc_house)
+
 detach(kc_house)
 attach(kc_house)
-min(kc_house$price)
 
-price
+
+# kc_house[,19]
+# 
+# test_id = sample(1:dim(kc_house)[1], size = 0.25*dim(kc_house)[1])
+# Test =kc_house[test_id ,] #Test dataset 25% of total
+# Training = kc_house[-test_id ,] #Train dataset 75% of total
+# 
+# library(GGally)
+# library(ggplot2)
+# p1<-ggpairs(data=Training, columns = c(1:5,19), axisLabels = "show")
+# p1
+# 
+# kc_house
+# 
+# p2<-ggpairs(data=Training, columns = c(6:10,19), axisLabels = "show")
+# p2
+# 
+# p2<-ggpairs(data=Training, columns = c(6:10,19), axisLabels = "show")
+# p2
+# 
+# p3<-ggpairs(data=Training, columns = c(11:15,19), axisLabels = "show")
+# p3
+# 
+# p4<-ggpairs(data=Training, columns = c(16:18,19), axisLabels = "show")
+# p4
+# 
+# boxplot1=boxplot(price~sqft_living, data=Training, 
+#                  col=(c("gold","darkgreen")),
+#                  main="Price vs. Sqft_living", xlab="Sqft_living", ylab="Price")
+# 
+# boxplot2=boxplot(price~bathrooms, data=Training, 
+#                  col=(c("gold","darkgreen")),
+#                  main="Price vs. Bathrooms", xlab="Bathrooms", ylab="Price")
+# 
+# boxplot3=boxplot(price~grade, data=Training, 
+#                  col=(c("gold","darkgreen")),
+#                  main="Price vs. Grade", xlab="Grade", ylab="Price")
+# 
+# boxplot4=boxplot(price~view, data=Training, 
+#                  col=(c("gold","darkgreen")),
+#                  main="Price vs. View", xlab="View", ylab="Price")
+# 
+# boxplot5=boxplot(price~lat, data=Training, 
+#                  col=(c("gold","darkgreen")),
+#                  main="Price vs. Lat", xlab="Lat", ylab="Price")
+# 
+# boxplot6=boxplot(price~sqft_above, data=Training, 
+#                  col=(c("gold","darkgreen")),
+#                  main="Price vs. sqft_above", xlab="Lat", ylab="Price")
+# 
+# #those variables has quite strong correlation with the output
+# cor(kc_house[,c(3,4,8,10,15,19)])
+# 
+# cor(kc_house)[,19]
+# 
+# plot(sqft_living,price, main="Sqft_Living vs. Price of House", xlab="Sqft_Living", ylab="Price of House", pch=19)
+# 
+# 
+# 
+# linear_model<-lm(price~sqft_living, data=Training)
+# 
+
+
+
+#################
+# kc_house<-kc_house[price<1000000,]
+kc_house[19]<-(kc_house[19]/1000)
+detach(kc_house)
+attach(kc_house)
+
 #Import caret library
 library(caret)
 #Define the random seed (otherwise we cannot repeat exactly the same experiment)
 set.seed(42)
 #try to evaluate performance of different models splitting the whole set into training-validation-test set
 
-id.train<-createDataPartition(kc_house$price, p=.75, list=FALSE)
-id.val<-createDataPartition(kc_house$price, p=.25, list=FALSE)
-# id.test<-createDataPartition(kc_house$price, p=.20, list=FALSE)
+
+id.train<-createDataPartition(price, p=.65, list=FALSE)
+id.val<-createDataPartition(price, p=.15, list=FALSE)
+id.test<-createDataPartition(price, p=.20, list=FALSE)
 
 train_set<-kc_house[id.train,]
 val_set_X<-kc_house[id.val,-19]
 val_set_y<-kc_house[id.val,19]
-# test_set_X<-kc_house[id.test,-19]
-# test_set_y<-kc_house[id.test,19]
-#train_set<-as.data.frame(train_set)
+test_set_X<-kc_house[id.test,-19]
+test_set_y<-kc_house[id.test,19]
 
 #we train model1 (linear model with grade 1)
-model1<-lm(price~ ., data=train_set)
-summary(model1)
-model1<-lm(price~ .-floors, data=train_set)
-summary(model1)
-model1<-lm(price~ .-floors-sqft_lot, data=train_set)
+
+# model1<-lm(price~ ., data=train_set)
+# summary(model1)
+# model1<-lm(price~ .-floors, data=train_set)
+# summary(model1)
+model1<-lm(price~ .-floors-sqft_lot-sqft_lot15, data=train_set)
 summary(model1)
 pred1<-predict(model1, newdata=val_set_X)
+#we don't want to cut off the intercept, so we keep it!
+pred1
+postResample(pred1, val_set_y)
+#RMSE can also be calculated as:
+sqrt(mean((pred1-val_set_y)**2))
 
-RMSE = function(m, o){
-  sqrt(mean((m - o)^2))
-}
-RMSE(pred1, val_set_y)
 
-# plot(model1)
 
-min(price)
 #train model 2, polynomial model with grade 2
-model2<-lm(price~ date+I(date^2)+ bedrooms+I(bedrooms^2) + bathrooms + I(bathrooms^2)+
-             sqft_living+I(sqft_living^2)+sqft_lot+I(sqft_lot^2)+floors+I(floors^2)+
-             waterfront+I(waterfront^2)+view+I(view^2)+condition+I(condition^2)+
-             grade+I(grade^2)+sqft_above+I(sqft_above^2)+yr_built+I(yr_built^2)+
-             yr_last_renovation+I(yr_last_renovation^2)+zipcode+I(zipcode^2)+
-             lat+I(lat^2)+long+I(long^2)+sqft_living15+I(sqft_living15^2)+sqft_lot15+
-             I(sqft_lot15^2), data=train_set)
-summary(model2)
-
-model2<-lm(price~ date+I(date^2)+ bedrooms+I(bedrooms^2) + bathrooms + I(bathrooms^2)+
-             sqft_living+I(sqft_living^2)+sqft_lot+I(sqft_lot^2)+floors+I(floors^2)+
-             waterfront+view+I(view^2)+condition+I(condition^2)+
-             grade+I(grade^2)+sqft_above+I(sqft_above^2)+yr_built+I(yr_built^2)+
-             yr_last_renovation+I(yr_last_renovation^2)+zipcode+I(zipcode^2)+
-             lat+I(lat^2)+long+I(long^2)+sqft_living15+I(sqft_living15^2)+sqft_lot15+
-             I(sqft_lot15^2), data=train_set)
-summary(model2)
-
-model2<-lm(price~ date+I(date^2)+ bedrooms+I(bedrooms^2) + bathrooms + I(bathrooms^2)+
-             sqft_living+I(sqft_living^2)+sqft_lot+I(sqft_lot^2)+floors+I(floors^2)+
-             waterfront+view+I(view^2)+condition+I(condition^2)+
-             grade+I(grade^2)+sqft_above+I(sqft_above^2)+yr_built+I(yr_built^2)+
-             yr_last_renovation+I(yr_last_renovation^2)+zipcode+I(zipcode^2)+
-             lat+I(lat^2)+long+I(long^2)+sqft_living15+I(sqft_living15^2)+sqft_lot15, data=train_set)
-summary(model2)
-
-model2<-lm(price~ date+I(date^2)+ bedrooms+I(bedrooms^2) + bathrooms + I(bathrooms^2)+
-             sqft_living+I(sqft_living^2)+sqft_lot+I(sqft_lot^2)+floors+I(floors^2)+
-             waterfront+view+condition+I(condition^2)+
-             grade+I(grade^2)+sqft_above+I(sqft_above^2)+yr_built+I(yr_built^2)+
-             yr_last_renovation+I(yr_last_renovation^2)+zipcode+I(zipcode^2)+
-             lat+I(lat^2)+long+I(long^2)+sqft_living15+I(sqft_living15^2)+sqft_lot15, data=train_set)
-summary(model2)
-
-model2<-lm(price~ date+I(date^2)+ bedrooms+I(bedrooms^2) + bathrooms + I(bathrooms^2)+
-             sqft_living+I(sqft_living^2)+I(sqft_lot^2)+floors+I(floors^2)+
-             waterfront+view+condition+I(condition^2)+
-             grade+I(grade^2)+sqft_above+I(sqft_above^2)+yr_built+I(yr_built^2)+
-             yr_last_renovation+I(yr_last_renovation^2)+zipcode+I(zipcode^2)+
-             lat+I(lat^2)+long+I(long^2)+sqft_living15+I(sqft_living15^2)+sqft_lot15, data=train_set)
-summary(model2)
-
-model2<-lm(price~ date+I(date^2)+ bedrooms+I(bedrooms^2) + bathrooms + I(bathrooms^2)+
-             sqft_living+I(sqft_living^2)+I(sqft_lot^2)+floors+I(floors^2)+
-             waterfront+view+condition+grade+I(grade^2)+sqft_above+I(sqft_above^2)+yr_built+I(yr_built^2)+
-             yr_last_renovation+I(yr_last_renovation^2)+zipcode+I(zipcode^2)+
-             lat+I(lat^2)+long+I(long^2)+sqft_living15+I(sqft_living15^2)+sqft_lot15, data=train_set)
-summary(model2)
-
-model2<-lm(price~ date+I(date^2)+ bedrooms+I(bedrooms^2) +I(bathrooms^2)+
-             sqft_living+I(sqft_living^2)+I(sqft_lot^2)+floors+I(floors^2)+
-             waterfront+view+condition+grade+I(grade^2)+sqft_above+I(sqft_above^2)+yr_built+I(yr_built^2)+
-             yr_last_renovation+I(yr_last_renovation^2)+zipcode+I(zipcode^2)+
-             lat+I(lat^2)+long+I(long^2)+sqft_living15+I(sqft_living15^2)+sqft_lot15, data=train_set)
-summary(model2)
-
-model2<-lm(price~ date+I(date^2)+ bedrooms+I(bedrooms^2) +I(bathrooms^2)+
-             sqft_living+I(sqft_living^2)+I(sqft_lot^2)+floors+I(floors^2)+
-             waterfront+view+condition+grade+I(grade^2)+sqft_above+I(sqft_above^2)+yr_built+I(yr_built^2)+
-             yr_last_renovation+I(yr_last_renovation^2)+zipcode+I(zipcode^2)+
-             lat+I(lat^2)+long+I(long^2)+sqft_living15+I(sqft_living15^2), data=train_set)
-summary(model2)
+# model2<-lm(price~ date+I(date^2)+ bedrooms+I(bedrooms^2) + bathrooms + I(bathrooms^2)+
+#              sqft_living+I(sqft_living^2)+sqft_lot+I(sqft_lot^2)+floors+I(floors^2)+
+#              waterfront+I(waterfront^2)+view+I(view^2)+condition+I(condition^2)+
+#              grade+I(grade^2)+sqft_above+I(sqft_above^2)+yr_built+I(yr_built^2)+
+#              yr_last_renovation+I(yr_last_renovation^2)+zipcode+I(zipcode^2)+
+#              lat+I(lat^2)+long+I(long^2)+sqft_living15+I(sqft_living15^2)+sqft_lot15+
+#              I(sqft_lot15^2), data=train_set)
+# summary(model2)
+# 
+# model2<-lm(price~ date+I(date^2)+ bedrooms+I(bedrooms^2) + bathrooms + I(bathrooms^2)+
+#              sqft_living+I(sqft_living^2)+sqft_lot+I(sqft_lot^2)+floors+I(floors^2)+
+#              waterfront+view+I(view^2)+condition+I(condition^2)+
+#              grade+I(grade^2)+sqft_above+I(sqft_above^2)+yr_built+I(yr_built^2)+
+#              yr_last_renovation+I(yr_last_renovation^2)+zipcode+I(zipcode^2)+
+#              lat+I(lat^2)+long+I(long^2)+sqft_living15+I(sqft_living15^2)+sqft_lot15+
+#              I(sqft_lot15^2), data=train_set)
+# summary(model2)
+# 
+# model2<-lm(price~ date+I(date^2)+ bedrooms+I(bedrooms^2) + bathrooms + I(bathrooms^2)+
+#              sqft_living+I(sqft_living^2)+sqft_lot+I(sqft_lot^2)+floors+I(floors^2)+
+#              waterfront+view+I(view^2)+condition+I(condition^2)+
+#              grade+I(grade^2)+sqft_above+I(sqft_above^2)+yr_built+I(yr_built^2)+
+#              yr_last_renovation+I(yr_last_renovation^2)+zipcode+I(zipcode^2)+
+#              lat+I(lat^2)+long+I(long^2)+sqft_living15+I(sqft_living15^2)+sqft_lot15, data=train_set)
+# summary(model2)
+# 
+# model2<-lm(price~ date+I(date^2)+ bedrooms+I(bedrooms^2) + bathrooms + I(bathrooms^2)+
+#              sqft_living+I(sqft_living^2)+sqft_lot+I(sqft_lot^2)+floors+I(floors^2)+
+#              waterfront+view+condition+I(condition^2)+
+#              grade+I(grade^2)+sqft_above+I(sqft_above^2)+yr_built+I(yr_built^2)+
+#              yr_last_renovation+I(yr_last_renovation^2)+zipcode+I(zipcode^2)+
+#              lat+I(lat^2)+long+I(long^2)+sqft_living15+I(sqft_living15^2)+sqft_lot15, data=train_set)
+# summary(model2)
+# 
+# model2<-lm(price~ date+I(date^2)+ bedrooms+I(bedrooms^2) + bathrooms + I(bathrooms^2)+
+#              sqft_living+I(sqft_living^2)+I(sqft_lot^2)+floors+I(floors^2)+
+#              waterfront+view+condition+I(condition^2)+
+#              grade+I(grade^2)+sqft_above+I(sqft_above^2)+yr_built+I(yr_built^2)+
+#              yr_last_renovation+I(yr_last_renovation^2)+zipcode+I(zipcode^2)+
+#              lat+I(lat^2)+long+I(long^2)+sqft_living15+I(sqft_living15^2)+sqft_lot15, data=train_set)
+# summary(model2)
+# 
+# model2<-lm(price~ date+I(date^2)+ bedrooms+I(bedrooms^2) + bathrooms + I(bathrooms^2)+
+#              sqft_living+I(sqft_living^2)+I(sqft_lot^2)+floors+I(floors^2)+
+#              waterfront+view+condition+grade+I(grade^2)+sqft_above+I(sqft_above^2)+yr_built+I(yr_built^2)+
+#              yr_last_renovation+I(yr_last_renovation^2)+zipcode+I(zipcode^2)+
+#              lat+I(lat^2)+long+I(long^2)+sqft_living15+I(sqft_living15^2)+sqft_lot15, data=train_set)
+# summary(model2)
+# 
+# model2<-lm(price~ date+I(date^2)+ bedrooms+I(bedrooms^2) +I(bathrooms^2)+
+#              sqft_living+I(sqft_living^2)+I(sqft_lot^2)+floors+I(floors^2)+
+#              waterfront+view+condition+grade+I(grade^2)+sqft_above+I(sqft_above^2)+yr_built+I(yr_built^2)+
+#              yr_last_renovation+I(yr_last_renovation^2)+zipcode+I(zipcode^2)+
+#              lat+I(lat^2)+long+I(long^2)+sqft_living15+I(sqft_living15^2)+sqft_lot15, data=train_set)
+# summary(model2)
+# 
+# model2<-lm(price~ date+I(date^2)+ bedrooms+I(bedrooms^2) +I(bathrooms^2)+
+#              sqft_living+I(sqft_living^2)+I(sqft_lot^2)+floors+I(floors^2)+
+#              waterfront+view+condition+grade+I(grade^2)+sqft_above+I(sqft_above^2)+yr_built+I(yr_built^2)+
+#              yr_last_renovation+I(yr_last_renovation^2)+zipcode+I(zipcode^2)+
+#              lat+I(lat^2)+long+I(long^2)+sqft_living15+I(sqft_living15^2), data=train_set)
+# summary(model2)
 
 model2<-lm(price~ date+I(date^2)+ bedrooms+I(bedrooms^2) +I(bathrooms^2)+
              sqft_living+I(sqft_living^2)+I(sqft_lot^2)+floors+I(floors^2)+
@@ -301,45 +369,51 @@ model2<-lm(price~ date+I(date^2)+ bedrooms+I(bedrooms^2) +I(bathrooms^2)+
              lat+I(lat^2)+long+I(long^2)+sqft_living15, data=train_set)
 summary(model2)
 
-pred2<-predict.lm(model2, val_set_X)
-
-RMSE(pred2, val_set_y)
-
-
-(pred2-val_set_y)[1:10]
-
-lm.score(model2)
-
+pred2<-predict(model2, val_set_X)
+postResample(pred2, val_set_y)
+#the residual standard error of the model2 can be calculated also as:
+anova(model2)
+sqrt(473738789/14020)
 #polynomial model grade 3
-model3<-lm(price~ date+I(date^2)+ I(date^3)+bedrooms+I(bedrooms^2) +I(bedrooms^3) + bathrooms + I(bathrooms^2)+
-             I(bathrooms^3)+sqft_living+I(sqft_living^2)+I(sqft_living^3)+sqft_lot+I(sqft_lot^2)+I(sqft_lot^3)+
-             floors+I(floors^2)+I(floors^3)+waterfront+I(waterfront^2)+I(waterfront^3)+view+I(view^2)+I(view^3)+condition+I(condition^2)+
-             I(condition^3)+grade+I(grade^2)+I(grade^3)+sqft_above+I(sqft_above^2)+I(sqft_above^3)+yr_built+I(yr_built^2)+I(yr_built^3)+
-             yr_last_renovation+I(yr_last_renovation^2)+zipcode+I(zipcode^2)+lat+I(lat^2)+I(lat^3)+long+I(long^2)+I(long^3)+sqft_living15+I(sqft_living15^2)+I(sqft_living15^3)+sqft_lot15+
-             I(sqft_lot15^2)+I(sqft_lot15^3),data=train_set)
-summary(model3)
+# model3<-lm(price~ date+I(date^2)+ I(date^3)+bedrooms+I(bedrooms^2) +I(bedrooms^3) + bathrooms + I(bathrooms^2)+
+#              I(bathrooms^3)+sqft_living+I(sqft_living^2)+I(sqft_living^3)+sqft_lot+I(sqft_lot^2)+I(sqft_lot^3)+
+#              floors+I(floors^2)+I(floors^3)+waterfront+I(waterfront^2)+I(waterfront^3)+view+I(view^2)+I(view^3)+condition+I(condition^2)+
+#              I(condition^3)+grade+I(grade^2)+I(grade^3)+sqft_above+I(sqft_above^2)+I(sqft_above^3)+yr_built+I(yr_built^2)+I(yr_built^3)+
+#              yr_last_renovation+I(yr_last_renovation^2)+zipcode+I(zipcode^2)+lat+I(lat^2)+I(lat^3)+long+I(long^2)+I(long^3)+sqft_living15+I(sqft_living15^2)+I(sqft_living15^3)+sqft_lot15+
+#              I(sqft_lot15^2)+I(sqft_lot15^3),data=train_set)
+# summary(model3)
+
 #remove 1 by 1 the covariates (we report only the final model)
-model3<-lm(price~ I(date^3)+bedrooms+I(bedrooms^2) +bathrooms + I(bathrooms^2)+
-             I(bathrooms^3)+sqft_living+I(sqft_living^2)+I(sqft_living^3)+sqft_lot+
-             floors+I(floors^2)+waterfront+view+I(view^2)+I(view^3)+I(condition^2)+
+model3<-lm(price~ I(date^3)+bedrooms+I(bedrooms^2) + I(bathrooms^2)+
+             sqft_living+I(sqft_living^2)+I(sqft_living^3)+sqft_lot+
+             waterfront+view+I(view^2)+I(view^3)+I(condition^2)+
              grade+I(grade^2)+I(grade^3)+sqft_above+I(sqft_above^2)+I(sqft_above^3)+yr_built+I(yr_built^2)+I(yr_built^3)+
              yr_last_renovation+I(yr_last_renovation^2)+zipcode+I(zipcode^2)+lat+I(lat^2)+long+I(long^2)+I(sqft_living15^2)+I(sqft_living15^3)+sqft_lot15+
              I(sqft_lot15^2)+I(sqft_lot15^3),data=train_set)
 summary(model3)
 
 pred3<-predict(model3, newdata=val_set_X)
-pred3
-RMSE(pred3, val_set_y)
-
-sqrt(mean(residuals(model3)**2))
-plot(residuals(model3))
-# anova(model1)
-
-
 postResample(pred3, val_set_y)
-plot(val_set_y,pred3,  xlim=c(0,3000),ylim=c(0,3000))
+# plot(val_set_y,pred3,  xlim=c(0,3000),ylim=c(0,3000))
+
+dim(cor(kc_house)[,19])
+ggpairs(kc_house, columns=c("date","bedrooms","bathrooms","sqft_living","sqft_above","price"))
 
 
+#work in progress... using the function "poly" to simply sintax
+model4<-lm(price~ poly(date,3)+poly(bedrooms,3) + 
+             
+             I(bathrooms^2)+
+             sqft_living+I(sqft_living^2)+I(sqft_living^3)+sqft_lot+
+             waterfront+view+I(view^2)+I(view^3)+I(condition^2)+
+             grade+I(grade^2)+I(grade^3)+sqft_above+I(sqft_above^2)+I(sqft_above^3)+yr_built+I(yr_built^2)+I(yr_built^3)+
+             yr_last_renovation+I(yr_last_renovation^2)+zipcode+I(zipcode^2)+lat+I(lat^2)+long+I(long^2)+I(sqft_living15^2)+I(sqft_living15^3)+sqft_lot15+
+             I(sqft_lot15^2)+I(sqft_lot15^3),data=train_set)
+summary(model4)
+
+
+# train_set<-as.data.frame(train_set)
+# model5<-lm(price ~ poly(train_set,4),data=train_set)
 
 ###CROSS VALIDATION
 #Splitting the whole dataset into training and test set

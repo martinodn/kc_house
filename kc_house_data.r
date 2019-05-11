@@ -401,17 +401,28 @@ ggpairs(kc_house, columns=c("date","bedrooms","bathrooms","sqft_living","sqft_ab
 
 
 #work in progress... using the function "poly" to simply sintax
-model4<-lm(price~ poly(date,3)+poly(bedrooms,3) + 
-             
-             I(bathrooms^2)+
-             sqft_living+I(sqft_living^2)+I(sqft_living^3)+sqft_lot+
-             waterfront+view+I(view^2)+I(view^3)+I(condition^2)+
-             grade+I(grade^2)+I(grade^3)+sqft_above+I(sqft_above^2)+I(sqft_above^3)+yr_built+I(yr_built^2)+I(yr_built^3)+
-             yr_last_renovation+I(yr_last_renovation^2)+zipcode+I(zipcode^2)+lat+I(lat^2)+long+I(long^2)+I(sqft_living15^2)+I(sqft_living15^3)+sqft_lot15+
-             I(sqft_lot15^2)+I(sqft_lot15^3),data=train_set)
+# model4<-lm(price~ poly(date,4)+poly(bedrooms,4) + poly(bathrooms,4) + poly(sqft_living,4) +
+#              poly(sqft_lot,4) + poly(floors,4) +
+#              waterfront +poly(view,4) +poly(condition,4) +poly(grade,4) +poly(sqft_above,4) +poly(yr_built,4) +
+#              poly(yr_last_renovation,4) +poly(zipcode,4) +poly(lat,4) +poly(long,4) +poly(sqft_living15 ,4) +poly(sqft_lot15,4),data=train_set)
+# summary(model4)
+model4<-lm(price~ poly(date,3)+poly(bedrooms,2) + bathrooms + I(bathrooms^3) + I(bathrooms^4) + poly(sqft_living,4) +
+             poly(sqft_lot,1) + floors +
+             waterfront +poly(view,4) +poly(condition,1) +poly(grade,4) +poly(sqft_above,3) +I(yr_built^2)+I(yr_built^3) +
+             poly(yr_last_renovation,3) +poly(zipcode,3) +poly(lat,4) +poly(long,4) +poly(sqft_living15 ,4) +I(sqft_lot15^4) ,data=train_set)
 summary(model4)
 
+pred4<-predict(model4, newdata=val_set_X)
+postResample(pred4, val_set_y)
 
+# models=c(model1,model2,model3,model4)
+# results=c()
+# i=0
+# for(model in models){
+#   i=i+1
+#   pred_i<-predict(model, newdata=val_set_X)
+#   results[i]=postResample(pred4, val_set_y)
+# }
 # train_set<-as.data.frame(train_set)
 # model5<-lm(price ~ poly(train_set,4),data=train_set)
 

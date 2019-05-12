@@ -1,7 +1,6 @@
 kc_house<-read.csv("kc_house_data.csv")
 attach(kc_house)
 
-
 #TODO: dove abbiamo preso i dati, spiegare ogni colonna cosa significa
 
 #check the dimension of the dataset
@@ -19,9 +18,8 @@ kc_house
 dim(kc_house)
 
 #check the number of duplicated ids
-length(id)- length(unique(id))
+length(id) - length(unique(id))
 
-kc_house[c(80:100),]
 #since id is not unique, we retrieve rows with duplicated id
 #duplicated(id)
 d<-kc_house[duplicated(id),]
@@ -103,6 +101,7 @@ dim(kc_house)
 #other unlikely values as the previous one.
 detach(kc_house)
 attach(kc_house)
+#Define the mean dimension of a room in a house, in squared meters
 mean_sqm<-(sqft_living/(bedrooms+(bedrooms*bathrooms)))/10.764
 length(mean_sqm)
 #we note that there are some infinite values due to the fact that there are no bedrooms and bathrooms in 
@@ -131,25 +130,42 @@ library(ggmap)
 # Set location bounds (King County)
 location <- c(-140, 35, -90, 57)
 # Fetch the map (osm = OpenStreetMap)
-kc <- get_map(location=location, source="osm")
+points.kc <- get_map(location=location, source="osm")
 # Draw the map
-map.kc <- ggmap(kc)
+map.kc <- ggmap(points.kc)
 # Add the points layer
 map.kc <- map.kc + geom_point(data = kc_house, aes(x = long, y = lat), size = .0001)
 # Plot map
 map.kc
 
-#more zoommed graph
+# More zoom
 # Set location bounds (King County)
 location <- c(-123.25, 47.15, -121.25, 47.9)
 # Fetch the map (osm = OpenStreetMap)
-kc <- get_map(location=location, source="osm")
+points.kc <- get_map(location=location, source="osm")
 # Draw the map
-map.kc <- ggmap(kc)
+map.kc <- ggmap(points.kc)
 # Add the points layer
 map.kc <- map.kc + geom_point(data = kc_house, aes(x = long, y = lat), size = .0001)
 # Plot map
 map.kc
+
+#Plotting the pair plot should give some idea about correlation between our variables
+#However, pair plot of all the columns is large and difficult to manage.
+#Hence, we proceed by plotting few variables against each other.
+
+# Plotting a simple map: bigger circles mean bigger price
+# For more info, check out http://geog.uoregon.edu/bartlein/courses/geog495/lec05.html
+plot(long, lat, type='n')
+symbols(long, lat, circles=price, inches=0.1, add=T)
+
+# Plot price against grade
+plot(grade, price)
+# Plot smoothed line on the graph
+lines(loess.smooth(grade, price, span=1), lty=1,col=2)
+lines(loess.smooth(grade, price, span=.5), lty=1,col=2)
+lines(loess.smooth(grade, price, span=.1), lty=1,col=2)
+
 
 
 ##########################REGRESSION MODEL
@@ -261,6 +277,7 @@ attach(kc_house)
 #################
 # kc_house<-kc_house[price<1000000,]
 kc_house[19]<-(kc_house[19]/1000)
+kc_house
 detach(kc_house)
 attach(kc_house)
 
@@ -292,7 +309,7 @@ summary(model1)
 pred1<-predict(model1, newdata=val_set_X)
 #we don't want to cut off the intercept, so we keep it!
 pred1
-postResample(pred1, val_set_y)
+pr<-postResample(pred1, val_set_y)
 #RMSE can also be calculated as:
 sqrt(mean((pred1-val_set_y)**2))
 
@@ -426,37 +443,64 @@ postResample(pred4, val_set_y)
 # train_set<-as.data.frame(train_set)
 # model5<-lm(price ~ poly(train_set,4),data=train_set)
 
-###CROSS VALIDATION
 #Splitting the whole dataset into training and test set
-
-
 #Define training indexes
 idx.train<-createDataPartition(kc_house$price, p=.80, list=FALSE)
 #Define train and test subsets
 train<-kc_house[idx.train,]
 test<-kc_house[-idx.train,]
-
 #Check length of train and test set (percentage)
 dim(train)[1]/dim(kc_house)[1]
 dim(test)[1]/dim(kc_house)[1]
-
 #Check price values in train set
 summary(train$price)
 #Check price values in test set
 summary(test$price)
 
+#Cross-Validation (using previously splitted database)
 #Define k for k-fold cross-validation
 k<-10
+#Define p for polynomial grades to be tested
+p<-10
+# Define a matrix with k rows and p columns for RMSE
+cv.rmse<-matrix(nrow=k, ncol=p)
+# Define a matrix with k rows and p columns for R^2
+cv.rsquared<-matrix(nrow=k, ncol=p)
 #Split train data in K-fold split
 folds<-createFolds(train$price, k=k, list=FALSE, returnTrain=FALSE)
-#Loops through every fold
+#Loop through every fold
 for (i in 1:k) {
   #Get validation set for i-th iteration
   idx.valid<-which(folds==i, arr.ind=TRUE)
-  #Get validation set
-  train[idx.valid,]
-  #Get training set, without validation set
-  train[-idx.valid,]
+  #Loops through every grade of the polynomial specified
+  for (j in 1:p) {
+    #Get validation set
+    cv.valid<-train[idx.valid,]
+    #Get training set, without validation set
+    cv.train<-train[-idx.valid,]
+    # Define function for polynomial trasformation (j-th grade)
+    to.poly <- function(x) I(x^j)
+    #Apply transformations on features only of training and validation dataset
+    cv.train[-19]<-apply(cv.train[-19], 2, to.poly)
+    cv.valid[-19]<-apply(cv.valid[-19], 2, to.poly)
+    #Train the model using training set
+    m<-lm(data=cv.train, formula=price~.-floors-sqft_lot-sqft_lot15)
+    #Predict values using validation set (without price column)
+    cv.predicted<-predict(m, newdata=cv.valid[-19])
+    #Add prediction scores to the matrices
+    cv.rmse[i,j]<-RMSE(cv.predicted, cv.valid[19])
+    cv.rsquared[i,j]<-R2(cv.predicted, cv.valid[19])
+  }
 }
-
+#Initialize mean values for prediction scores
+cv.mean.rmse<-c()
+cv.mean.rsquared<-c()
+#Compute the average scores on every fold, for every model
+for (j in 1:p) {
+  cv.mean.rmse<-c(cv.mean.rmse, mean(cv.rmse[,j]))
+  cv.mean.rsquared<-c(cv.mean.rsquared, mean(cv.rsquared[,j]))
+}
+# Show averaged results
+cv.mean.rmse
+cv.mean.rsquared
 

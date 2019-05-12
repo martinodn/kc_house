@@ -156,17 +156,19 @@ map.kc
 
 # Plotting a simple map: bigger circles mean bigger price
 # For more info, check out http://geog.uoregon.edu/bartlein/courses/geog495/lec05.html
-plot(long, lat, type='n')
-symbols(long, lat, circles=price, inches=0.1, add=T)
-
-# Plot price against grade
-plot(grade, price)
-# Plot smoothed line on the graph
-lines(loess.smooth(grade, price, span=1), lty=1,col=2)
-lines(loess.smooth(grade, price, span=.5), lty=1,col=2)
-lines(loess.smooth(grade, price, span=.1), lty=1,col=2)
-
-
+# FIrst import libraries
+library(scatterplot3d)
+library(RColorBrewer)
+# Get colors for labeling the points
+plotvar <- price # pick a variable to plot
+nclr <- 8 # number of colors
+plotclr <- brewer.pal(nclr, "PuBu") # get the colors
+colornum <- cut(rank(plotvar), nclr, labels=FALSE)
+colcode <- plotclr[colornum] # assign color
+# 3D Scatter plot
+plot.angle <- 45
+scatterplot3d(long, lat, plotvar, type="h", angle=plot.angle, color=colcode, pch=20, cex.symbols=2, 
+              col.axis="gray", col.grid="gray", xlab="Longitude", ylab="Latitude", zlab="Price")
 
 ##########################REGRESSION MODEL
 model<-lm(price ~ ., data=kc_house)
@@ -304,7 +306,8 @@ test_set_y<-kc_house[id.test,19]
 # summary(model1)
 # model1<-lm(price~ .-floors, data=train_set)
 # summary(model1)
-model1<-lm(price~ .-floors-sqft_lot-sqft_lot15, data=train_set)
+formula.1 <- "price ~ .-floors -sqft_lot -sqft_lot15"
+model1<-lm(as.formula(formula.1), data=train_set)
 summary(model1)
 pred1<-predict(model1, newdata=val_set_X)
 #we don't want to cut off the intercept, so we keep it!
@@ -379,11 +382,12 @@ sqrt(mean((pred1-val_set_y)**2))
 #              lat+I(lat^2)+long+I(long^2)+sqft_living15+I(sqft_living15^2), data=train_set)
 # summary(model2)
 
-model2<-lm(price~ date+I(date^2)+ bedrooms+I(bedrooms^2) +I(bathrooms^2)+
-             sqft_living+I(sqft_living^2)+I(sqft_lot^2)+floors+I(floors^2)+
-             waterfront+view+condition+grade+I(grade^2)+sqft_above+I(sqft_above^2)+yr_built+I(yr_built^2)+
-             yr_last_renovation+I(yr_last_renovation^2)+zipcode+I(zipcode^2)+
-             lat+I(lat^2)+long+I(long^2)+sqft_living15, data=train_set)
+formula.2 <- "price ~ date + I(date^2) + bedrooms + I(bedrooms^2) + I(bathrooms^2) +
+             sqft_living + I(sqft_living^2) + I(sqft_lot^2) + floors + I(floors^2) +
+             waterfront + view + condition + grade + I(grade^2) + sqft_above + I(sqft_above^2) + yr_built + I(yr_built^2) +
+             yr_last_renovation + I(yr_last_renovation^2) + zipcode + I(zipcode^2) +
+             lat + I(lat^2) + long + I(long^2) + sqft_living15"
+model2<-lm(as.formula(formula.2), data=train_set)
 summary(model2)
 
 pred2<-predict(model2, val_set_X)
@@ -401,12 +405,11 @@ sqrt(473738789/14020)
 # summary(model3)
 
 #remove 1 by 1 the covariates (we report only the final model)
-model3<-lm(price~ I(date^3)+bedrooms+I(bedrooms^2) + I(bathrooms^2)+
-             sqft_living+I(sqft_living^2)+I(sqft_living^3)+sqft_lot+
-             waterfront+view+I(view^2)+I(view^3)+I(condition^2)+
-             grade+I(grade^2)+I(grade^3)+sqft_above+I(sqft_above^2)+I(sqft_above^3)+yr_built+I(yr_built^2)+I(yr_built^3)+
-             yr_last_renovation+I(yr_last_renovation^2)+zipcode+I(zipcode^2)+lat+I(lat^2)+long+I(long^2)+I(sqft_living15^2)+I(sqft_living15^3)+sqft_lot15+
-             I(sqft_lot15^2)+I(sqft_lot15^3),data=train_set)
+formula.3 <- "price ~ I(date^3) + bedrooms + I(bedrooms^2) + I(bathrooms^2) + sqft_living + I(sqft_living^2) + I(sqft_living^3) + sqft_lot + waterfront + view + I(view^2) + I(view^3) + I(condition^2) +
+             grade + I(grade^2) + I(grade^3) + sqft_above + I(sqft_above^2) + I(sqft_above^3) + yr_built + I(yr_built^2) + I(yr_built^3) +
+             yr_last_renovation + I(yr_last_renovation^2) + zipcode + I(zipcode^2) + lat + I(lat^2) + long + I(long^2) + I(sqft_living15^2) + I(sqft_living15^3) + sqft_lot15 +
+             I(sqft_lot15^2) + I(sqft_lot15^3)"
+model3<-lm(as.formula(formula.3),data=train_set)
 summary(model3)
 
 pred3<-predict(model3, newdata=val_set_X)
@@ -423,10 +426,10 @@ ggpairs(kc_house, columns=c("date","bedrooms","bathrooms","sqft_living","sqft_ab
 #              waterfront +poly(view,4) +poly(condition,4) +poly(grade,4) +poly(sqft_above,4) +poly(yr_built,4) +
 #              poly(yr_last_renovation,4) +poly(zipcode,4) +poly(lat,4) +poly(long,4) +poly(sqft_living15 ,4) +poly(sqft_lot15,4),data=train_set)
 # summary(model4)
-model4<-lm(price~ poly(date,3)+poly(bedrooms,2) + bathrooms + I(bathrooms^3) + I(bathrooms^4) + poly(sqft_living,4) +
-             poly(sqft_lot,1) + floors +
-             waterfront +poly(view,4) +poly(condition,1) +poly(grade,4) +poly(sqft_above,3) +I(yr_built^2)+I(yr_built^3) +
-             poly(yr_last_renovation,3) +poly(zipcode,3) +poly(lat,4) +poly(long,4) +poly(sqft_living15 ,4) +I(sqft_lot15^4) ,data=train_set)
+formula.4 <- "price~ poly(date,3)+poly(bedrooms,2) + bathrooms + I(bathrooms^3) + I(bathrooms^4) + poly(sqft_living,4) +
+             poly(sqft_lot,1) + floors + waterfront +poly(view,4) + poly(condition,1) + poly(grade,4) + poly(sqft_above,3) + I(yr_built^2)+I(yr_built^3) +
+             poly(yr_last_renovation,3) + poly(zipcode,3) + poly(lat,4) + poly(long,4) + poly(sqft_living15 ,4) + I(sqft_lot15^4)"
+model4<-lm(as.formula(formula.4),data=train_set)
 summary(model4)
 
 pred4<-predict(model4, newdata=val_set_X)
@@ -460,12 +463,12 @@ summary(test$price)
 #Cross-Validation (using previously splitted database)
 #Define k for k-fold cross-validation
 k<-10
-#Define p for polynomial grades to be tested
-p<-10
+#Define an array of formula, to be used in model training
+f<-c(formula.1, formula.2, formula.3, formula.4)
 # Define a matrix with k rows and p columns for RMSE
-cv.rmse<-matrix(nrow=k, ncol=p)
+cv.rmse<-matrix(nrow=k, ncol=length(models))
 # Define a matrix with k rows and p columns for R^2
-cv.rsquared<-matrix(nrow=k, ncol=p)
+cv.rsquared<-matrix(nrow=k, ncol=length(models))
 #Split train data in K-fold split
 folds<-createFolds(train$price, k=k, list=FALSE, returnTrain=FALSE)
 #Loop through every fold
@@ -473,20 +476,15 @@ for (i in 1:k) {
   #Get validation set for i-th iteration
   idx.valid<-which(folds==i, arr.ind=TRUE)
   #Loops through every grade of the polynomial specified
-  for (j in 1:p) {
+  for (j in 1:length(f)) {
     #Get validation set
     cv.valid<-train[idx.valid,]
     #Get training set, without validation set
     cv.train<-train[-idx.valid,]
-    # Define function for polynomial trasformation (j-th grade)
-    to.poly <- function(x) I(x^j)
-    #Apply transformations on features only of training and validation dataset
-    cv.train[-19]<-apply(cv.train[-19], 2, to.poly)
-    cv.valid[-19]<-apply(cv.valid[-19], 2, to.poly)
     #Train the model using training set
-    m<-lm(data=cv.train, formula=price~.-floors-sqft_lot-sqft_lot15)
+    model<-lm(data=cv.train, formula=as.formula(f[j]))
     #Predict values using validation set (without price column)
-    cv.predicted<-predict(m, newdata=cv.valid[-19])
+    cv.predicted<-predict(model, newdata=cv.valid[-19])
     #Add prediction scores to the matrices
     cv.rmse[i,j]<-RMSE(cv.predicted, cv.valid[19])
     cv.rsquared[i,j]<-R2(cv.predicted, cv.valid[19])
@@ -496,11 +494,20 @@ for (i in 1:k) {
 cv.mean.rmse<-c()
 cv.mean.rsquared<-c()
 #Compute the average scores on every fold, for every model
-for (j in 1:p) {
+for (j in 1:length(f)) {
   cv.mean.rmse<-c(cv.mean.rmse, mean(cv.rmse[,j]))
   cv.mean.rsquared<-c(cv.mean.rsquared, mean(cv.rsquared[,j]))
 }
 # Show averaged results
 cv.mean.rmse
 cv.mean.rsquared
+# The best model is the 4-th, by looking at rmse and r-squared
+# Hence, we retrain the best model on the whole dataset
+model <- lm(data=train, formula=as.formula(formula.4))
+summary(model)
+# Test the best model on the test set
+predicted <- predict(model, newdata=test[-19])
+# Compute scores on test set
+RMSE(predicted, test[19])
+R2(predicted, test[19])
 

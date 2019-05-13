@@ -1,5 +1,5 @@
 kc_house<-read.csv("kc_house_data.csv")
-attach(kc_house)
+
 
 #TODO: dove abbiamo preso i dati, spiegare ogni colonna cosa significa
 
@@ -7,7 +7,7 @@ attach(kc_house)
 dim(kc_house)
 
 #convert date from string to observation number of the day (starting from 1)
-new.date<-as.Date(date,'%Y%m%d')
+new.date<-as.Date(kc_house$date,'%Y%m%d')
 new.date<-new.date-(sort(new.date))[1]
 #new.date
 #sort(unique(new.date))
@@ -18,19 +18,19 @@ kc_house
 # dim(kc_house)
 
 #check the number of duplicated ids
-length(id) - length(unique(id))
+length(kc_house$id) - length(unique(kc_house$id))
 
 #since id is not unique, we retrieve rows with duplicated id
 #duplicated(id)
-d<-kc_house[duplicated(id),]
+d<-kc_house[duplicated(kc_house$id),]
 dim(d)
 #we note that there are some duplicates wrt id and date
 #we suppose, by observations, that a specific id corresponds to a specific date
-d<-kc_house[duplicated(id, date),]
+d<-kc_house[duplicated(kc_house$id, kc_house$date),]
 dim(d)
 
 #we want to check whether they are the same rows
-all(duplicated(id)==duplicated(id,date))
+all(duplicated(kc_house$id)==duplicated(kc_house$id,kc_house$date))
 
 #our observation is confirmed by this check
 #hence, id not useful to understand data and to predict
@@ -38,21 +38,21 @@ kc_house<-kc_house[-1]
 
 # kc_house
 dim(kc_house)
-
+kc_house
 #we now take into account the column "yr_renovated": this column express the year of the last renovation of the
 #house. Since the null values are coded as 0 and the other are coded as a year, this two are not very consistent and
 #so we want to transform this column into a feature that express the year of the last renovation: if no renovation
 #is done on a house, we use the year of construction.
 
 #we firtsly check that there are no errors in the data, i.e. year of renovation smaller than year of construction.
-any(yr_built>yr_renovated && yr_renovated!=0)
+any(kc_house$yr_built>kc_house$yr_renovated && kc_house$yr_renovated!=0)
 
 #since there are no errors, we now want to substitute the "yr_renovated" feature with the year of the last renovation
 #or, if not present, the year of construction.
-mask<-yr_renovated==0
+mask<-kc_house$yr_renovated==0
 mask
-yr_last_renovation<-yr_renovated
-yr_last_renovation[mask]<-yr_built[mask]
+yr_last_renovation<-kc_house$yr_renovated
+yr_last_renovation[mask]<-kc_house$yr_built[mask]
 yr_last_renovation
 
 kc_house["yr_renovated"]<-yr_last_renovation
@@ -64,7 +64,7 @@ kc_house<-kc_house[,c("date", "bedrooms", "bathrooms", "sqft_living","sqft_lot",
            "grade", "sqft_above", "sqft_basement", "yr_built", "yr_last_renovation", "zipcode",  "lat", "long","sqft_living15", 
            "sqft_lot15", "price")]
 
-
+kc_house
 ################################EXPLORING DATA
 
 #The grade is a classification by construction quality which refers to the types of materials used and the quality 
@@ -86,23 +86,22 @@ summary(kc_house)
 #must have also 33*1.75 bathrooms, which is 57 total bathrooms, i.e. 90 total rooms (excluding other possible
 #spaces.)
 #We want to see the other values of that row, that are the values of that house.
-kc_house[bedrooms==33,]
-boxplot(bedrooms)
+kc_house[kc_house$bedrooms==33,]
+boxplot(kc_house$bedrooms)
 # We note that the total living space is 1620 square feet, equal to about 150 m^2. This would imply that each room has a mean of 1.66 m^2,
 #which is clearly impossible. So, there must be some errors in the reporting of the data (the number of 
 #bedrooms could be 3 for example).
 
 #So, we decide to delete that row.
 
-kc_house<-kc_house[bedrooms<33,]
+kc_house<-kc_house[kc_house$bedrooms<33,]
 dim(kc_house)
 
 #In general, we want to check the mean square footage of the rooms per each house, to see if there are 
 #other unlikely values as the previous one.
-detach(kc_house)
-attach(kc_house)
+
 #Define the mean dimension of a room in a house, in squared meters
-mean_sqm<-(sqft_living/(bedrooms+(bedrooms*bathrooms)))/10.764
+mean_sqm<-(kc_house$sqft_living/(kc_house$bedrooms+(kc_house$bedrooms*kc_house$bathrooms)))/10.764
 length(mean_sqm)
 #we note that there are some infinite values due to the fact that there are no bedrooms and bathrooms in 
 #that building. So, we want to boxplot the mean_sqft excluding those houses.
@@ -115,11 +114,11 @@ min(mean_sqm)
 
 #We want to see the type of houses we're dealing with; thus, we check the distribution of the grade of the
 #houses and we compare it to a normal distribution.
-hist(grade, breaks =12)
-qqnorm(grade)
+hist(kc_house$grade, breaks =12)
+qqnorm(kc_house$grade)
 #We can see that the distribution of grade is close to a normal one, with the mean between 7 and 8 (7.65).
 #Other feature, like sqft_living, are not distributed as a normal and we can see it by plotting its values.
-qqnorm(sqft_living)
+qqnorm(kc_house$sqft_living)
 
 # MAP
 
@@ -134,7 +133,7 @@ points.kc <- get_map(location=location, source="osm")
 # Draw the map
 map.kc <- ggmap(points.kc)
 # Add the points layer
-map.kc <- map.kc + geom_point(data = kc_house, aes(x = long, y = lat), size = .0001)
+map.kc <- map.kc + geom_point(data = kc_house, aes(x = kc_house$long, y = kc_house$lat), size = .0001)
 # Plot map
 map.kc
 
@@ -146,7 +145,7 @@ points.kc <- get_map(location=location, source="osm")
 # Draw the map
 map.kc <- ggmap(points.kc)
 # Add the points layer
-map.kc <- map.kc + geom_point(data = kc_house, aes(x = long, y = lat), size = .0001)
+map.kc <- map.kc + geom_point(data = kc_house, aes(x = kc_house$long, y = kc_house$lat), size = .0001)
 # Plot map
 map.kc
 
@@ -160,18 +159,18 @@ map.kc
 library(scatterplot3d)
 library(RColorBrewer)
 # Get colors for labeling the points
-plotvar <- price # pick a variable to plot
+plotvar <- kc_house$price # pick a variable to plot
 nclr <- 8 # number of colors
 plotclr <- brewer.pal(nclr, "PuBu") # get the colors
 colornum <- cut(rank(plotvar), nclr, labels=FALSE)
 colcode <- plotclr[colornum] # assign color
 # 3D Scatter plot
 plot.angle <- 340
-scatterplot3d(long, lat, plotvar, type="h", angle=plot.angle, color=colcode, pch=20, cex.symbols=2, 
+scatterplot3d(kc_house$long, kc_house$lat, plotvar, type="h", angle=plot.angle, color=colcode, pch=20, cex.symbols=2, 
               col.axis="gray", col.grid="gray", xlab="Longitude", ylab="Latitude", zlab="Price")
 
 ##########################REGRESSION MODEL
-model<-lm(price ~ ., data=kc_house)
+model<-lm(kc_house$price ~ ., data=kc_house)
 summary(model)
 
 #From the summary of the model we have just applied we can see that the coefficient of the column 
@@ -179,7 +178,7 @@ summary(model)
 #the two column "sqft_living" and "sqft_above". In fact, "sqft_basement" = "sqft_living" - "sqft_above".
 #We give the proof of that:
 
-sqft_diff<-sqft_living-(sqft_basement + sqft_above)
+sqft_diff<-kc_house$sqft_living-(kc_house$sqft_basement + kc_house$sqft_above)
 any(sqft_diff!=0)
 
 #As we notice, all the values in "sqft_diff" are zero.
@@ -209,7 +208,6 @@ any(sqft_diff!=0)
 #we delete the column sqft_basement because it add no infos and it can be add in future if we want (lossless delete)
 kc_house<-kc_house[,-12]
 
-detach(kc_house)
 attach(kc_house)
 
 
@@ -279,8 +277,8 @@ attach(kc_house)
 #################
 # kc_house<-kc_house[price<1000000,]
 kc_house[19]<-(kc_house[19]/1000)
-kc_house
-detach(kc_house)
+
+
 attach(kc_house)
 
 
@@ -393,7 +391,7 @@ model2<-lm(as.formula(formula.2), data=train_set)
 summary(model2)
 
 #with this graph we have the evidence that we can use a linear model to fit the data
-plot(model2)[2]
+
 
 hist(model2$residuals, breaks = 100)
 pred2<-predict(model2, val_set_X)
@@ -451,6 +449,21 @@ postResample(pred4, val_set_y)
 # }
 # train_set<-as.data.frame(train_set)
 # model5<-lm(price ~ poly(train_set,4),data=train_set)
+
+#plot every feature vs price (target)
+
+
+hist(log10(sort(kc_house$price)))
+ggplot(kc_house, aes(x = price)) +
+  geom_histogram(color = "white") +
+  labs(x = "price (USD)", title = "House price")
+
+plot(kc_house$price~kc_house$sqft_living)
+
+ggplot(kc_house, aes(x = sqft_living)) +
+  geom_histogram(color = "white") +
+  labs(x = "living space (square feet)", title = "House size")
+
 
 #Splitting the whole dataset into training and test set
 #Define training indexes

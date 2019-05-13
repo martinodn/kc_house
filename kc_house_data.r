@@ -184,104 +184,21 @@ any(sqft_diff!=0)
 #As we notice, all the values in "sqft_diff" are zero.
 #So, for the prediction we get rid of the feature "sqft_basement" because it doesn't add any valuable 
 #information wrt to what we know from the other two columns.
-# 
-# model<-glm(price ~ .-sqft_basement, data=kc_house)
-# summary(model)
-# 
-# residuals(model)
-# hist(residuals(model), breaks = 200)
-# qqnorm(residuals(model))
-# 
-# model<-lm(price ~ .-sqft_basement-floors, data=kc_house)
-# summary(model)
 
 
-#try to standardize the price to see the difference (CUT OFF THIS PART)
-#new.price<-((price-mean(price))/sd(price))
-# new.price
-# plot(new.price)
-# kc_house[20]<-new.price
-# kc_house
-# model<-lm(price ~ .-sqft_basement, data=kc_house)
-# summary(model)
+
 
 #we delete the column sqft_basement because it add no infos and it can be add in future if we want (lossless delete)
 kc_house<-kc_house[,-12]
 
-attach(kc_house)
-
-
-# kc_house[,19]
-# 
-# test_id = sample(1:dim(kc_house)[1], size = 0.25*dim(kc_house)[1])
-# Test =kc_house[test_id ,] #Test dataset 25% of total
-# Training = kc_house[-test_id ,] #Train dataset 75% of total
-# 
-# library(GGally)
-# library(ggplot2)
-# p1<-ggpairs(data=Training, columns = c(1:5,19), axisLabels = "show")
-# p1
-# 
-# kc_house
-# 
-# p2<-ggpairs(data=Training, columns = c(6:10,19), axisLabels = "show")
-# p2
-# 
-# p2<-ggpairs(data=Training, columns = c(6:10,19), axisLabels = "show")
-# p2
-# 
-# p3<-ggpairs(data=Training, columns = c(11:15,19), axisLabels = "show")
-# p3
-# 
-# p4<-ggpairs(data=Training, columns = c(16:18,19), axisLabels = "show")
-# p4
-# 
-# boxplot1=boxplot(price~sqft_living, data=Training, 
-#                  col=(c("gold","darkgreen")),
-#                  main="Price vs. Sqft_living", xlab="Sqft_living", ylab="Price")
-# 
-# boxplot2=boxplot(price~bathrooms, data=Training, 
-#                  col=(c("gold","darkgreen")),
-#                  main="Price vs. Bathrooms", xlab="Bathrooms", ylab="Price")
-# 
-# boxplot3=boxplot(price~grade, data=Training, 
-#                  col=(c("gold","darkgreen")),
-#                  main="Price vs. Grade", xlab="Grade", ylab="Price")
-# 
-# boxplot4=boxplot(price~view, data=Training, 
-#                  col=(c("gold","darkgreen")),
-#                 main="Price vs. View", xlab="View", ylab="Price")
-# 
-# boxplot5=boxplot(price~lat, data=Training, 
-#                  col=(c("gold","darkgreen")),
-#                  main="Price vs. Lat", xlab="Lat", ylab="Price")
-# 
-# boxplot6=boxplot(price~sqft_above, data=Training, 
-#                  col=(c("gold","darkgreen")),
-#                  main="Price vs. sqft_above", xlab="Lat", ylab="Price")
-# 
-# #those variables has quite strong correlation with the output
-# cor(kc_house[,c(3,4,8,10,15,19)])
-# 
-# cor(kc_house)[,19]
-# 
-# plot(sqft_living,price, main="Sqft_Living vs. Price of House", xlab="Sqft_Living", ylab="Price of House", pch=19)
-# 
-# 
-# 
-# linear_model<-lm(price~sqft_living, data=Training)
-# 
-
-
 
 #################
-# kc_house<-kc_house[price<1000000,]
-kc_house[19]<-(kc_house[19]/1000)
 
-
+# kc_house<-kc_house[kc_house$price<1000000,]
+kc_house[19]<-log10(kc_house[19])
 attach(kc_house)
 
-
+dim(kc_house)
 #Import caret library
 library(caret)
 #Define the random seed (otherwise we cannot repeat exactly the same experiment)
@@ -289,103 +206,40 @@ set.seed(42)
 #try to evaluate performance of different models splitting the whole set into training-validation-test set
 
 
-id.train<-createDataPartition(price, p=.65, list=FALSE)
-id.val<-createDataPartition(price, p=.15, list=FALSE)
-id.test<-createDataPartition(price, p=.20, list=FALSE)
+id.train<-createDataPartition(price, p=.80, list=FALSE)
+train_set<-kc_house[id.train,] #80
+test_set<-kc_house[-id.train,] #20
+# 
+id.val<-createDataPartition(train_set$price, p=.15, list=FALSE)
+# id.test<-createDataPartition(price, p=.20, list=FALSE)
+val_set<-train_set[id.val,] 
+train_set<-train_set[-id.val,] 
 
-train_set<-kc_house[id.train,]
-val_set_X<-kc_house[id.val,-19]
-val_set_y<-kc_house[id.val,19]
-test_set_X<-kc_house[id.test,-19]
-test_set_y<-kc_house[id.test,19]
+val_set_X<-val_set[,-19]
+val_set_y<-val_set[,19]
+test_set_X<-test_set[,-19]
+test_set_y<-test_set[,19]
 
-#we train model1 (linear model with grade 1)
-#BACKWARD variable selection
 
-# model1<-lm(price~ ., data=train_set)
-# summary(model1)
-# model1<-lm(price~ .-floors, data=train_set)
-# summary(model1)
-formula.1 <- "price ~ .-floors -sqft_lot -sqft_lot15"
-model1<-lm(as.formula(formula.1), data=train_set)
+#BACKWARD VARIABLE SELECTION
+#model1 (linear model with grade 1)
+model1<-lm(price ~ .-floors -sqft_lot -sqft_lot15, data=train_set)
 summary(model1)
 pred1<-predict(model1, newdata=val_set_X)
+
+plot(model1)
 #we don't want to cut off the intercept, so we keep it!
-pred1
-pr<-postResample(pred1, val_set_y)
-pr
+postResample(pred1, val_set_y)
+
 #RMSE can also be calculated as:
-sqrt(mean((pred1-val_set_y)**2))
+sqrt(mean((10**(pred1)-10**(val_set_y))**2))
 
 
-#train model 2, polynomial model with grade 2
-# model2<-lm(price~ date+I(date^2)+ bedrooms+I(bedrooms^2) + bathrooms + I(bathrooms^2)+
-#              sqft_living+I(sqft_living^2)+sqft_lot+I(sqft_lot^2)+floors+I(floors^2)+
-#              waterfront+I(waterfront^2)+view+I(view^2)+condition+I(condition^2)+
-#              grade+I(grade^2)+sqft_above+I(sqft_above^2)+yr_built+I(yr_built^2)+
-#              yr_last_renovation+I(yr_last_renovation^2)+zipcode+I(zipcode^2)+
-#              lat+I(lat^2)+long+I(long^2)+sqft_living15+I(sqft_living15^2)+sqft_lot15+
-#              I(sqft_lot15^2), data=train_set)
-# summary(model2)
-# 
-# model2<-lm(price~ date+I(date^2)+ bedrooms+I(bedrooms^2) + bathrooms + I(bathrooms^2)+
-#              sqft_living+I(sqft_living^2)+sqft_lot+I(sqft_lot^2)+floors+I(floors^2)+
-#              waterfront+view+I(view^2)+condition+I(condition^2)+
-#              grade+I(grade^2)+sqft_above+I(sqft_above^2)+yr_built+I(yr_built^2)+
-#              yr_last_renovation+I(yr_last_renovation^2)+zipcode+I(zipcode^2)+
-#              lat+I(lat^2)+long+I(long^2)+sqft_living15+I(sqft_living15^2)+sqft_lot15+
-#              I(sqft_lot15^2), data=train_set)
-# summary(model2)
-# 
-# model2<-lm(price~ date+I(date^2)+ bedrooms+I(bedrooms^2) + bathrooms + I(bathrooms^2)+
-#              sqft_living+I(sqft_living^2)+sqft_lot+I(sqft_lot^2)+floors+I(floors^2)+
-#              waterfront+view+I(view^2)+condition+I(condition^2)+
-#              grade+I(grade^2)+sqft_above+I(sqft_above^2)+yr_built+I(yr_built^2)+
-#              yr_last_renovation+I(yr_last_renovation^2)+zipcode+I(zipcode^2)+
-#              lat+I(lat^2)+long+I(long^2)+sqft_living15+I(sqft_living15^2)+sqft_lot15, data=train_set)
-# summary(model2)
-# 
-# model2<-lm(price~ date+I(date^2)+ bedrooms+I(bedrooms^2) + bathrooms + I(bathrooms^2)+
-#              sqft_living+I(sqft_living^2)+sqft_lot+I(sqft_lot^2)+floors+I(floors^2)+
-#              waterfront+view+condition+I(condition^2)+
-#              grade+I(grade^2)+sqft_above+I(sqft_above^2)+yr_built+I(yr_built^2)+
-#              yr_last_renovation+I(yr_last_renovation^2)+zipcode+I(zipcode^2)+
-#              lat+I(lat^2)+long+I(long^2)+sqft_living15+I(sqft_living15^2)+sqft_lot15, data=train_set)
-# summary(model2)
-# 
-# model2<-lm(price~ date+I(date^2)+ bedrooms+I(bedrooms^2) + bathrooms + I(bathrooms^2)+
-#              sqft_living+I(sqft_living^2)+I(sqft_lot^2)+floors+I(floors^2)+
-#              waterfront+view+condition+I(condition^2)+
-#              grade+I(grade^2)+sqft_above+I(sqft_above^2)+yr_built+I(yr_built^2)+
-#              yr_last_renovation+I(yr_last_renovation^2)+zipcode+I(zipcode^2)+
-#              lat+I(lat^2)+long+I(long^2)+sqft_living15+I(sqft_living15^2)+sqft_lot15, data=train_set)
-# summary(model2)
-# 
-# model2<-lm(price~ date+I(date^2)+ bedrooms+I(bedrooms^2) + bathrooms + I(bathrooms^2)+
-#              sqft_living+I(sqft_living^2)+I(sqft_lot^2)+floors+I(floors^2)+
-#              waterfront+view+condition+grade+I(grade^2)+sqft_above+I(sqft_above^2)+yr_built+I(yr_built^2)+
-#              yr_last_renovation+I(yr_last_renovation^2)+zipcode+I(zipcode^2)+
-#              lat+I(lat^2)+long+I(long^2)+sqft_living15+I(sqft_living15^2)+sqft_lot15, data=train_set)
-# summary(model2)
-# 
-# model2<-lm(price~ date+I(date^2)+ bedrooms+I(bedrooms^2) +I(bathrooms^2)+
-#              sqft_living+I(sqft_living^2)+I(sqft_lot^2)+floors+I(floors^2)+
-#              waterfront+view+condition+grade+I(grade^2)+sqft_above+I(sqft_above^2)+yr_built+I(yr_built^2)+
-#              yr_last_renovation+I(yr_last_renovation^2)+zipcode+I(zipcode^2)+
-#              lat+I(lat^2)+long+I(long^2)+sqft_living15+I(sqft_living15^2)+sqft_lot15, data=train_set)
-# summary(model2)
-# 
-# model2<-lm(price~ date+I(date^2)+ bedrooms+I(bedrooms^2) +I(bathrooms^2)+
-#              sqft_living+I(sqft_living^2)+I(sqft_lot^2)+floors+I(floors^2)+
-#              waterfront+view+condition+grade+I(grade^2)+sqft_above+I(sqft_above^2)+yr_built+I(yr_built^2)+
-#              yr_last_renovation+I(yr_last_renovation^2)+zipcode+I(zipcode^2)+
-#              lat+I(lat^2)+long+I(long^2)+sqft_living15+I(sqft_living15^2), data=train_set)
-# summary(model2)
-
-formula.2 <- "price ~ date + I(date^2) + bedrooms + I(bedrooms^2) + I(bathrooms^2) +
-             sqft_living + I(sqft_living^2) + I(sqft_lot^2) + floors + I(floors^2) +
-             waterfront + view + condition + grade + I(grade^2) + sqft_above + I(sqft_above^2) + yr_built + I(yr_built^2) +
-             yr_last_renovation + I(yr_last_renovation^2) + zipcode + I(zipcode^2) +
+#model2 (linear model with grade 2)
+formula.2 <- "price ~ date + I(date^2)  + I(bedrooms^2) + I(bathrooms^2) +
+             sqft_living + I(sqft_living^2) + I(sqft_lot^2) +
+             waterfront + view + condition + grade + I(grade^2) + sqft_above +  yr_built + I(yr_built^2) +
+             yr_last_renovation + I(yr_last_renovation^2)  + I(zipcode^2) +
              lat + I(lat^2) + long + I(long^2) + sqft_living15"
 model2<-lm(as.formula(formula.2), data=train_set)
 summary(model2)
@@ -396,6 +250,7 @@ summary(model2)
 hist(model2$residuals, breaks = 100)
 pred2<-predict(model2, val_set_X)
 postResample(pred2, val_set_y)
+RMSE(10**(pred2),10**(val_set_y))
 #the residual standard error of the model2 can be calculated also as:
 anova(model2)
 sqrt(473738789/14020)
@@ -418,6 +273,8 @@ summary(model3)
 
 pred3<-predict(model3, newdata=val_set_X)
 postResample(pred3, val_set_y)
+
+RMSE(10**(pred3),10**(val_set_y))
 # plot(val_set_y,pred3,  xlim=c(0,3000),ylim=c(0,3000))
 
 dim(cor(kc_house)[,19])
@@ -430,7 +287,7 @@ ggpairs(kc_house, columns=c("date","bedrooms","bathrooms","sqft_living","sqft_ab
 #              waterfront +poly(view,4) +poly(condition,4) +poly(grade,4) +poly(sqft_above,4) +poly(yr_built,4) +
 #              poly(yr_last_renovation,4) +poly(zipcode,4) +poly(lat,4) +poly(long,4) +poly(sqft_living15 ,4) +poly(sqft_lot15,4),data=train_set)
 # summary(model4)
-formula.4 <- "price~ poly(date,3)+poly(bedrooms,2) + bathrooms + I(bathrooms^3) + I(bathrooms^4) + poly(sqft_living,4) +
+formula.4 <- "price~ poly(date,3)+ bedrooms+ I(bedrooms^3)+ I(bedrooms^4) + bathrooms + I(bathrooms^3) + I(bathrooms^4) + poly(sqft_living,4) +
              poly(sqft_lot,1) + floors + waterfront +poly(view,4) + poly(condition,1) + poly(grade,4) + poly(sqft_above,3) + I(yr_built^2)+I(yr_built^3) +
              poly(yr_last_renovation,3) + poly(zipcode,3) + poly(lat,4) + poly(long,4) + poly(sqft_living15 ,4) + I(sqft_lot15^4)"
 model4<-lm(as.formula(formula.4),data=train_set)
@@ -439,6 +296,24 @@ summary(model4)
 pred4<-predict(model4, newdata=val_set_X)
 postResample(pred4, val_set_y)
 
+
+hist(price)
+RMSE(10**(pred4),10**(val_set_y))
+
+
+
+
+
+
+##############ANALYSIS WITHOUT OUTLIERS maderfucker
+
+
+
+
+
+
+
+##############################################THE UNTOUCHABLE ZONE!!!! ALERT!!!!! DANGER!!!!
 # models=c(model1,model2,model3,model4)
 # results=c()
 # i=0
@@ -451,18 +326,6 @@ postResample(pred4, val_set_y)
 # model5<-lm(price ~ poly(train_set,4),data=train_set)
 
 #plot every feature vs price (target)
-
-
-hist(log10(sort(kc_house$price)))
-ggplot(kc_house, aes(x = price)) +
-  geom_histogram(color = "white") +
-  labs(x = "price (USD)", title = "House price")
-
-plot(kc_house$price~kc_house$sqft_living)
-
-ggplot(kc_house, aes(x = sqft_living)) +
-  geom_histogram(color = "white") +
-  labs(x = "living space (square feet)", title = "House size")
 
 
 #Splitting the whole dataset into training and test set

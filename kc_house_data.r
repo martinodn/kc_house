@@ -15,7 +15,7 @@ new.date<-new.date-(sort(new.date))[1]
 #We add this column to the dataset instead of the original one
 kc_house[2]<-as.numeric(new.date)
 kc_house
-dim(kc_house)
+# dim(kc_house)
 
 #check the number of duplicated ids
 length(id) - length(unique(id))
@@ -36,7 +36,7 @@ all(duplicated(id)==duplicated(id,date))
 #hence, id not useful to understand data and to predict
 kc_house<-kc_house[-1]
 
-kc_house
+# kc_house
 dim(kc_house)
 
 #we now take into account the column "yr_renovated": this column express the year of the last renovation of the
@@ -156,7 +156,7 @@ map.kc
 
 # Plotting a simple map: bigger circles mean bigger price
 # For more info, check out http://geog.uoregon.edu/bartlein/courses/geog495/lec05.html
-# FIrst import libraries
+# First import libraries
 library(scatterplot3d)
 library(RColorBrewer)
 # Get colors for labeling the points
@@ -166,7 +166,7 @@ plotclr <- brewer.pal(nclr, "PuBu") # get the colors
 colornum <- cut(rank(plotvar), nclr, labels=FALSE)
 colcode <- plotclr[colornum] # assign color
 # 3D Scatter plot
-plot.angle <- 45
+plot.angle <- 340
 scatterplot3d(long, lat, plotvar, type="h", angle=plot.angle, color=colcode, pch=20, cex.symbols=2, 
               col.axis="gray", col.grid="gray", xlab="Longitude", ylab="Latitude", zlab="Price")
 
@@ -252,7 +252,7 @@ attach(kc_house)
 # 
 # boxplot4=boxplot(price~view, data=Training, 
 #                  col=(c("gold","darkgreen")),
-#                  main="Price vs. View", xlab="View", ylab="Price")
+#                 main="Price vs. View", xlab="View", ylab="Price")
 # 
 # boxplot5=boxplot(price~lat, data=Training, 
 #                  col=(c("gold","darkgreen")),
@@ -283,6 +283,7 @@ kc_house
 detach(kc_house)
 attach(kc_house)
 
+
 #Import caret library
 library(caret)
 #Define the random seed (otherwise we cannot repeat exactly the same experiment)
@@ -301,6 +302,7 @@ test_set_X<-kc_house[id.test,-19]
 test_set_y<-kc_house[id.test,19]
 
 #we train model1 (linear model with grade 1)
+#BACKWARD variable selection
 
 # model1<-lm(price~ ., data=train_set)
 # summary(model1)
@@ -313,9 +315,9 @@ pred1<-predict(model1, newdata=val_set_X)
 #we don't want to cut off the intercept, so we keep it!
 pred1
 pr<-postResample(pred1, val_set_y)
+pr
 #RMSE can also be calculated as:
 sqrt(mean((pred1-val_set_y)**2))
-
 
 
 #train model 2, polynomial model with grade 2
@@ -390,6 +392,10 @@ formula.2 <- "price ~ date + I(date^2) + bedrooms + I(bedrooms^2) + I(bathrooms^
 model2<-lm(as.formula(formula.2), data=train_set)
 summary(model2)
 
+#with this graph we have the evidence that we can use a linear model to fit the data
+plot(model2)[2]
+
+hist(model2$residuals, breaks = 100)
 pred2<-predict(model2, val_set_X)
 postResample(pred2, val_set_y)
 #the residual standard error of the model2 can be calculated also as:

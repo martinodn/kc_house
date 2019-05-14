@@ -191,10 +191,11 @@ any(sqft_diff!=0)
 #we delete the column sqft_basement because it add no infos and it can be add in future if we want (lossless delete)
 kc_house<-kc_house[,-12]
 
+hist(sqft_lot)
+#we can see that this feature has a really bad distribution, so we can try applying the log10 to it.
+kc_house[5]<-log10(kc_house$sqft_lot)
+hist(kc_house$sqft_lot, breaks=50, main = "Histogram of dimensions of lots")
 
-#################
-
-# kc_house<-kc_house[kc_house$price<1000000,]
 kc_house[19]<-log10(kc_house[19])
 attach(kc_house)
 
@@ -252,7 +253,6 @@ pred2<-predict(model2, val_set_X)
 postResample(pred2, val_set_y)
 RMSE(10**(pred2),10**(val_set_y))
 #the residual standard error of the model2 can be calculated also as:
-anova(model2)
 sqrt(473738789/14020)
 #polynomial model grade 3
 # model3<-lm(price~ date+I(date^2)+ I(date^3)+bedrooms+I(bedrooms^2) +I(bedrooms^3) + bathrooms + I(bathrooms^2)+
@@ -296,17 +296,79 @@ summary(model4)
 pred4<-predict(model4, newdata=val_set_X)
 postResample(pred4, val_set_y)
 
+#DATE (cor=-0.00570)
+#we notice we have a continuous detection for the dates: almost every day (starting from the initial one)
+#there are some house sold and so we don't have time intervals in which values of price are not present, 
+#as we can see from this plot.
+plot(sort(date))
 
-hist(price)
-RMSE(10**(pred4),10**(val_set_y))
+#we plot the price as a function of the date
+plot(price~date, main="Price by date")
+
+#it is not a very good plot, so we can try with the boxplot
+boxplot(price~sort(date), main="Price by date")
+
+#to see in a better way the data, we can average for each date the prices of the houses sold in that
+#day. Obviously we get an approximation, but this is not a big deal having a lot of examples (about 60 
+#per day) and this allows us to see really data in a nicer way.
+average_price_bydate <-aggregate(price~date, FUN=mean, data=kc_house)
+plot(average_price_bydate, col=1,main="Average price by date")
+lines(loess.smooth(date, price), col=2, lty=5)
+#we see that the date does not influence so much the price of the house
+
+#BEDROOMS (cor=0.35100546)
+boxplot(price~bedrooms, xlab="bedrooms", ylab="price",main="Price by bedrooms")
+#we see that the greater the number of bedrooms, the greater the price. Also we can notice that
+#there is a big number of outliers in the upper part for values of bedrooms in the range 2-6.
+
+#BATHROOMS (cor=0.55082290)
+boxplot(price~bathrooms, xlab="bathrooms", ylab="price",main="Price by bathrooms")
+#Also in this case, and more than for the previous one, it is clear that if we increase the number of 
+#bathrooms, also the price increases.
+
+#SQFT_LIVING (cor=0.69536476)
+plot(price~sqft_living,main="Price by sqft_living")
+lines(loess.smooth(sqft_living, price), col=3)
+
+#we can see data better:
+average_price_bysqftliving <-aggregate(price~sqft_living, FUN=mean, data=kc_house)
+plot(average_price_bysqftliving, col=1,main="Average price by living area")
+lines(loess.smooth(sqft_living, price), col=3)
+#also in this case there is an evident association between the dimensions of the living area and the price.
+
+
+#SQFT_LOT (cor=0.09962940)
+plot(price~sqft_lot)
+
+#we apply the aggregate function
+average_price_bysqftlot <-aggregate(price~sqft_lot, FUN=mean, data=kc_house)
+plot(average_price_bysqftlot, col=1,main="Average price by lot dimension")
+lines(loess.smooth(sqft_lot, price), col=3)
+
+#sqft_lot feature does not influence so much the target, as we can see from the plot
+
+#FLOORS (cor= 0.31059266)
+boxplot(price~floors, xlab="floors", main="Price by floor")
+#there is a little increase in the price as floors increase, but not so much
+
+#WATERFRONT (cor=0.17459026)
+
+#VIEW (cor= 0.34653430)
+
+#CONDITION (cor= 0.03949428)
+
+#GRADE (cor= 0.70366105)
+
+#SQFT_ABOVE(cor=0.60184347)
+
+#YR_BUILT (cor=0.08067957)
 
 
 
 
 
-
-##############ANALYSIS WITHOUT OUTLIERS maderfucker
-
+##############ANALYSIS WITHOUT OUTLIERS maderfuckerzzz
+cor(kc_house)
 
 
 

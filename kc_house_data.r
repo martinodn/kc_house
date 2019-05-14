@@ -352,17 +352,41 @@ boxplot(price~floors, xlab="floors", main="Price by floor")
 #there is a little increase in the price as floors increase, but not so much
 
 #WATERFRONT (cor=0.17459026)
+boxplot(price~waterfront, xlab="waterfront", main="Price by waterfront")
+#low correlation
 
 #VIEW (cor= 0.34653430)
+boxplot(price~view, xlab="view", main="Price by view")
+#We notice that there is a soft correlation between the covariate view and price
+
 
 #CONDITION (cor= 0.03949428)
+boxplot(price~condition, xlab="condition", main="Price by condition")
 
 #GRADE (cor= 0.70366105)
+boxplot(price~grade, xlab="grade", main="Price by grade")
+#grade has a strong correlation with the target!!
+
 
 #SQFT_ABOVE(cor=0.60184347)
+plot(price~sqft_above)
+#not so nice... we can see it better
+average_price_bysqftabove <-aggregate(price~sqft_above, FUN=mean, data=kc_house)
+plot(average_price_bysqftabove, col=1,main="Average price by above dimension")
+lines(loess.smooth(sqft_above, price), col=5)
+#price is really increasing as sqft_above increases!
 
 #YR_BUILT (cor=0.08067957)
+plot(price~yr_built)
+lines(loess.smooth(yr_built, price), col=5)
 
+#YR_LAST_RENOVATION (cor=0.13032651)
+
+#ZIPCODE (cor=0.03831967)
+#LAT (cor=0.44916082)
+#LONG (cor=0.04996692)
+#SQFT_LIVING_15 (cor=0.61935746)
+#SQFT_LOT15 (cor=0.09160121)
 
 
 

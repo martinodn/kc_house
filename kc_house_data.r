@@ -194,6 +194,8 @@ kc_house<-kc_house[,-12]
 hist(sqft_lot)
 #we can see that this feature has a really bad distribution, so we can try applying the log10 to it.
 kc_house[5]<-log10(kc_house$sqft_lot)
+kc_house[18]<-log10(kc_house$sqft_lot15)
+
 hist(kc_house$sqft_lot, breaks=50, main = "Histogram of dimensions of lots")
 
 kc_house[19]<-log10(kc_house[19])
@@ -201,8 +203,9 @@ dim(kc_house)
 length(kc_house$yr_last_renovation)
 
 attach(kc_house)
-length(yr_last_renovation)
-dim(kc_house)
+# length(yr_last_renovation)
+# dim(kc_house)
+
 #Import caret library
 library(caret)
 #Define the random seed (otherwise we cannot repeat exactly the same experiment)
@@ -223,81 +226,6 @@ val_set_X<-val_set[,-19]
 val_set_y<-val_set[,19]
 test_set_X<-test_set[,-19]
 test_set_y<-test_set[,19]
-
-
-#BACKWARD VARIABLE SELECTION
-#model1 (linear model with grade 1)
-model1<-lm(price ~ .-floors -sqft_lot -sqft_lot15, data=train_set)
-summary(model1)
-pred1<-predict(model1, newdata=val_set_X)
-
-plot(model1)
-#we don't want to cut off the intercept, so we keep it!
-postResample(pred1, val_set_y)
-
-#RMSE can also be calculated as:
-sqrt(mean((10**(pred1)-10**(val_set_y))**2))
-
-
-#model2 (linear model with grade 2)
-formula.2 <- "price ~ date + I(date^2)  + I(bedrooms^2) + I(bathrooms^2) +
-             sqft_living + I(sqft_living^2) + I(sqft_lot^2) +
-             waterfront + view + condition + grade + I(grade^2) + sqft_above +  yr_built + I(yr_built^2) +
-             yr_last_renovation + I(yr_last_renovation^2)  + I(zipcode^2) +
-             lat + I(lat^2) + long + I(long^2) + sqft_living15"
-model2<-lm(as.formula(formula.2), data=train_set)
-summary(model2)
-
-#with this graph we have the evidence that we can use a linear model to fit the data
-
-
-hist(model2$residuals, breaks = 100)
-pred2<-predict(model2, val_set_X)
-postResample(pred2, val_set_y)
-RMSE(10**(pred2),10**(val_set_y))
-#the residual standard error of the model2 can be calculated also as:
-sqrt(473738789/14020)
-#polynomial model grade 3
-# model3<-lm(price~ date+I(date^2)+ I(date^3)+bedrooms+I(bedrooms^2) +I(bedrooms^3) + bathrooms + I(bathrooms^2)+
-#              I(bathrooms^3)+sqft_living+I(sqft_living^2)+I(sqft_living^3)+sqft_lot+I(sqft_lot^2)+I(sqft_lot^3)+
-#              floors+I(floors^2)+I(floors^3)+waterfront+I(waterfront^2)+I(waterfront^3)+view+I(view^2)+I(view^3)+condition+I(condition^2)+
-#              I(condition^3)+grade+I(grade^2)+I(grade^3)+sqft_above+I(sqft_above^2)+I(sqft_above^3)+yr_built+I(yr_built^2)+I(yr_built^3)+
-#              yr_last_renovation+I(yr_last_renovation^2)+zipcode+I(zipcode^2)+lat+I(lat^2)+I(lat^3)+long+I(long^2)+I(long^3)+sqft_living15+I(sqft_living15^2)+I(sqft_living15^3)+sqft_lot15+
-#              I(sqft_lot15^2)+I(sqft_lot15^3),data=train_set)
-# summary(model3)
-
-#remove 1 by 1 the covariates (we report only the final model)
-formula.3 <- "price ~ I(date^3) + bedrooms + I(bedrooms^2) + I(bathrooms^2) + sqft_living + I(sqft_living^2) + I(sqft_living^3) + sqft_lot + waterfront + view + I(view^2) + I(view^3) + I(condition^2) +
-             grade + I(grade^2) + I(grade^3) + sqft_above + I(sqft_above^2) + I(sqft_above^3) + yr_built + I(yr_built^2) + I(yr_built^3) +
-             yr_last_renovation + I(yr_last_renovation^2) + zipcode + I(zipcode^2) + lat + I(lat^2) + long + I(long^2) + I(sqft_living15^2) + I(sqft_living15^3) + sqft_lot15 +
-             I(sqft_lot15^2) + I(sqft_lot15^3)"
-model3<-lm(as.formula(formula.3),data=train_set)
-summary(model3)
-
-pred3<-predict(model3, newdata=val_set_X)
-postResample(pred3, val_set_y)
-
-RMSE(10**(pred3),10**(val_set_y))
-# plot(val_set_y,pred3,  xlim=c(0,3000),ylim=c(0,3000))
-
-dim(cor(kc_house)[,19])
-ggpairs(kc_house, columns=c("date","bedrooms","bathrooms","sqft_living","sqft_above","price"))
-
-
-#work in progress... using the function "poly" to simply sintax
-# model4<-lm(price~ poly(date,4)+poly(bedrooms,4) + poly(bathrooms,4) + poly(sqft_living,4) +
-#              poly(sqft_lot,4) + poly(floors,4) +
-#              waterfront +poly(view,4) +poly(condition,4) +poly(grade,4) +poly(sqft_above,4) +poly(yr_built,4) +
-#              poly(yr_last_renovation,4) +poly(zipcode,4) +poly(lat,4) +poly(long,4) +poly(sqft_living15 ,4) +poly(sqft_lot15,4),data=train_set)
-# summary(model4)
-formula.4 <- "price~ poly(date,3)+ bedrooms+ I(bedrooms^3)+ I(bedrooms^4) + bathrooms + I(bathrooms^3) + I(bathrooms^4) + poly(sqft_living,4) +
-             poly(sqft_lot,1) + floors + waterfront +poly(view,4) + poly(condition,1) + poly(grade,4) + poly(sqft_above,3) + I(yr_built^2)+I(yr_built^3) +
-             poly(yr_last_renovation,3) + poly(zipcode,3) + poly(lat,4) + poly(long,4) + poly(sqft_living15 ,4) + I(sqft_lot15^4)"
-model4<-lm(as.formula(formula.4),data=train_set)
-summary(model4)
-
-pred4<-predict(model4, newdata=val_set_X)
-postResample(pred4, val_set_y)
 
 #DATE (cor=-0.00570)
 #we notice we have a continuous detection for the dates: almost every day (starting from the initial one)
@@ -343,6 +271,7 @@ lines(loess.smooth(sqft_living, price), col=3)
 #SQFT_LOT (cor=0.09962940)
 plot(price~sqft_lot)
 
+
 #we apply the aggregate function
 average_price_bysqftlot <-aggregate(price~sqft_lot, FUN=mean, data=kc_house)
 plot(average_price_bysqftlot, col=1,main="Average price by lot dimension")
@@ -383,20 +312,148 @@ lines(loess.smooth(sqft_above, price), col=5)
 plot(price~yr_built)
 lines(loess.smooth(yr_built, price), col=5)
 
+average_price_yb <-aggregate(price~yr_built, FUN=mean, data=kc_house)
+plot(average_price_yb, col=1,main="Average price by construction year")
+lines(loess.smooth(yr_built, price), col=5)
+
 #YR_LAST_RENOVATION (cor=0.13032651)
 plot(price~yr_last_renovation)
 kc_house
 length(yr_last_renovation)
+
+average_price_ylr <-aggregate(price~yr_last_renovation, FUN=mean, data=kc_house)
+plot(average_price_ylr, col=1,main="Average price by above dimension")
+lines(loess.smooth(yr_last_renovation, price), col=5)
+
 #ZIPCODE (cor=0.03831967)
+plot(price~zipcode)
+lines(loess.smooth(zipcode, price), col=5)
+
+average_price_zc <-aggregate(price~zipcode, FUN=mean, data=kc_house)
+plot(average_price_zc, col=1,main="Average price by zipcode")
+lines(loess.smooth(zipcode, price), col=5)
+
 #LAT (cor=0.44916082)
+plot(price~lat)
+lines(loess.smooth(lat, price), col=5)
+
+average_price_lat <-aggregate(price~lat, FUN=mean, data=kc_house)
+plot(average_price_lat, col=1,main="Average price by lat")
+lines(loess.smooth(lat, price), col=5)
+
+#can be seen a quite strong correlation
+
 #LONG (cor=0.04996692)
+plot(price~long)
+
+average_price_long <-aggregate(price~long, FUN=mean, data=kc_house)
+plot(average_price_long, col=1,main="Average price by long")
+lines(loess.smooth(long, price), col=5)
+#not so significant the long
+
+
 #SQFT_LIVING_15 (cor=0.61935746)
+plot(price~sqft_living15)
+average_price_l15 <-aggregate(price~sqft_living15, FUN=mean, data=kc_house)
+plot(average_price_l15, col=1,main="Average price by sqft_living15")
+lines(loess.smooth(sqft_living15, price), col=5)
+#really significant!
+
 #SQFT_LOT15 (cor=0.09160121)
+plot(price~log10(sqft_lot15))
+
+average_price_lot15 <-aggregate(price~sqft_lot15, FUN=mean, data=kc_house)
+plot(average_price_lot15, col=1,main="Average price by sqft_lot15")
+lines(loess.smooth(sqft_lot15, price), col=5)
+cor(kc_house)
+
+#BACKWARD VARIABLE SELECTION
+#model1 (linear model with grade 1)
+model1<-lm(price ~ .-floors -sqft_lot -sqft_lot15, data=train_set)
+summary(model1)
+pred1<-predict(model1, newdata=val_set_X)
+
+plot(model1)
+#we don't want to cut off the intercept, so we keep it!
+postResample(pred1, val_set_y)
+
+#RMSE can also be calculated as:
+sqrt(mean((10**(pred1)-10**(val_set_y))**2))
+
+
+#model2 (linear model with grade 2)
+formula.2 <- "price ~ date + I(date^2)  + I(bedrooms^2) + I(bathrooms^2) +
+             sqft_living + I(sqft_living^2) + I(sqft_lot^2) +
+             waterfront + view + condition + grade + I(grade^2)  + I(yr_built^2) +
+             yr_last_renovation + I(yr_last_renovation^2)  + I(zipcode^2) +
+             lat + I(lat^2) + long + I(long^2) + sqft_living15"
+model2<-lm(as.formula(formula.2), data=train_set)
+summary(model2)
+anova(model1,model2)
+#with this graph we have the evidence that we can use a linear model to fit the data
+
+
+hist(model2$residuals, breaks = 100)
+pred2<-predict(model2, val_set_X)
+postResample(pred2, val_set_y)
+RMSE(10**(pred2),10**(val_set_y))
+#the residual standard error of the model2 can be calculated also as:
+sqrt(473738789/14020)
+#polynomial model grade 3
+# model3<-lm(price~ date+I(date^2)+ I(date^3)+bedrooms+I(bedrooms^2) +I(bedrooms^3) + bathrooms + I(bathrooms^2)+
+#              I(bathrooms^3)+sqft_living+I(sqft_living^2)+I(sqft_living^3)+sqft_lot+I(sqft_lot^2)+I(sqft_lot^3)+
+#              floors+I(floors^2)+I(floors^3)+waterfront+I(waterfront^2)+I(waterfront^3)+view+I(view^2)+I(view^3)+condition+I(condition^2)+
+#              I(condition^3)+grade+I(grade^2)+I(grade^3)+sqft_above+I(sqft_above^2)+I(sqft_above^3)+yr_built+I(yr_built^2)+I(yr_built^3)+
+#              yr_last_renovation+I(yr_last_renovation^2)+zipcode+I(zipcode^2)+lat+I(lat^2)+I(lat^3)+long+I(long^2)+I(long^3)+sqft_living15+I(sqft_living15^2)+I(sqft_living15^3)+sqft_lot15+
+#              I(sqft_lot15^2)+I(sqft_lot15^3),data=train_set)
+# summary(model3)
+
+#remove 1 by 1 the covariates (we report only the final model)
+formula.3 <- "price ~ I(date^3)  + I(bedrooms^2) + I(bathrooms^2) + sqft_living + I(sqft_living^2) + sqft_lot +
+             + waterfront + view + I(view^2) + I(view^3) + I(condition^2) +grade + sqft_above + I(sqft_above^2) + I(sqft_above^3) + yr_built + I(yr_built^2) + I(yr_built^3) +
+             yr_last_renovation + I(yr_last_renovation^2) + zipcode + lat + I(lat^2) + long + I(long^2) + I(sqft_living15^2) + I(sqft_living15^3) + 
+             I(sqft_lot15^2) + I(sqft_lot15^3)"
+model3<-lm(as.formula(formula.3),data=train_set)
+summary(model3)
+anova(model2,model3)
+pred3<-predict(model3, newdata=val_set_X)
+postResample(pred3, val_set_y)
+
+RMSE(10**(pred3),10**(val_set_y))
+# plot(val_set_y,pred3,  xlim=c(0,3000),ylim=c(0,3000))
+
+dim(cor(kc_house)[,19])
+ggpairs(kc_house, columns=c("date","bedrooms","bathrooms","sqft_living","sqft_above","price"))
+
+
+#work in progress... using the function "poly" to simplify sintax
+# model4<-lm(price~ poly(date,4)+poly(bedrooms,4) + poly(bathrooms,4) + poly(sqft_living,4) +
+#              poly(sqft_lot,4) + poly(floors,4) +
+#              waterfront +poly(view,4) +poly(condition,4) +poly(grade,4) +poly(sqft_above,4) +poly(yr_built,4) +
+#              poly(yr_last_renovation,4) +poly(zipcode,4) +poly(lat,4) +poly(long,4) +poly(sqft_living15 ,4) +poly(sqft_lot15,4),data=train_set)
+# summary(model4)
+formula.4 <- "price~ I(date^4)+ I(bedrooms^3)+  bathrooms+ sqft_living+I(sqft_living^4) +
+             poly(sqft_lot,1) + floors + waterfront +view +I(view^3)+I(view^4) + poly(condition,1) +
+             +grade + poly(sqft_above,3) + I(yr_built^2) +
+             +poly(yr_last_renovation,3) + poly(zipcode,1) + poly(lat,4) + poly(long,4) + sqft_living15 + I(sqft_living15^2) +I(sqft_living15^4)"
+model4<-lm(as.formula(formula.4),data=train_set)
+summary(model4)
+anova(model3,model4)
+pred4<-predict(model4, newdata=val_set_X)
+postResample(pred4, val_set_y)
+
+
+
+
+
+
+
+
 
 
 
 ##############ANALYSIS WITHOUT OUTLIERS maderfuckerzzz
-cor(kc_house)
+
 
 
 

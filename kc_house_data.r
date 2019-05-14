@@ -367,6 +367,8 @@ plot(average_price_lot15, col=1,main="Average price by sqft_lot15")
 lines(loess.smooth(sqft_lot15, price), col=5)
 cor(kc_house)
 
+
+
 #BACKWARD VARIABLE SELECTION
 #model1 (linear model with grade 1)
 model1<-lm(price ~ .-floors -sqft_lot -sqft_lot15, data=train_set)
@@ -423,7 +425,7 @@ RMSE(10**(pred3),10**(val_set_y))
 # plot(val_set_y,pred3,  xlim=c(0,3000),ylim=c(0,3000))
 
 dim(cor(kc_house)[,19])
-ggpairs(kc_house, columns=c("date","bedrooms","bathrooms","sqft_living","sqft_above","price"))
+pairs(kc_house, columns=c("date","bedrooms","bathrooms","sqft_living","sqft_above","price"))
 
 
 #work in progress... using the function "poly" to simplify sintax
@@ -444,11 +446,12 @@ postResample(pred4, val_set_y)
 
 
 
+library(corrplot)
 
 
-
-
-
+corrplot(cor(kc_house))
+palette = colorRampPalette(c("green", "white", "red")) (20)
+heatmap(x = cor(kc_house), col = palette, symm = TRUE)
 
 
 

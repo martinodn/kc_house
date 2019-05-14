@@ -51,14 +51,14 @@ any(kc_house$yr_built>kc_house$yr_renovated && kc_house$yr_renovated!=0)
 #or, if not present, the year of construction.
 mask<-kc_house$yr_renovated==0
 mask
-yr_last_renovation<-kc_house$yr_renovated
-yr_last_renovation[mask]<-kc_house$yr_built[mask]
-yr_last_renovation
+ylr<-kc_house$yr_renovated
+ylr[mask]<-kc_house$yr_built[mask]
+ylr
 
-kc_house["yr_renovated"]<-yr_last_renovation
-
+kc_house["yr_renovated"]<-ylr
+kc_house
 colnames(kc_house)[15]<-"yr_last_renovation"
-
+length(kc_house$yr_last_renovation)
 #move the target feature (price) to the last column
 kc_house<-kc_house[,c("date", "bedrooms", "bathrooms", "sqft_living","sqft_lot", "floors", "waterfront","view","condition",
            "grade", "sqft_above", "sqft_basement", "yr_built", "yr_last_renovation", "zipcode",  "lat", "long","sqft_living15", 
@@ -197,8 +197,11 @@ kc_house[5]<-log10(kc_house$sqft_lot)
 hist(kc_house$sqft_lot, breaks=50, main = "Histogram of dimensions of lots")
 
 kc_house[19]<-log10(kc_house[19])
-attach(kc_house)
+dim(kc_house)
+length(kc_house$yr_last_renovation)
 
+attach(kc_house)
+length(yr_last_renovation)
 dim(kc_house)
 #Import caret library
 library(caret)
@@ -381,13 +384,14 @@ plot(price~yr_built)
 lines(loess.smooth(yr_built, price), col=5)
 
 #YR_LAST_RENOVATION (cor=0.13032651)
-
+plot(price~yr_last_renovation)
+kc_house
+length(yr_last_renovation)
 #ZIPCODE (cor=0.03831967)
 #LAT (cor=0.44916082)
 #LONG (cor=0.04996692)
 #SQFT_LIVING_15 (cor=0.61935746)
 #SQFT_LOT15 (cor=0.09160121)
-
 
 
 

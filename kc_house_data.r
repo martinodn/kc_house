@@ -371,9 +371,9 @@ cor(kc_house)
 
 #BACKWARD VARIABLE SELECTION
 #model1 (linear model with grade 1)
-model1<-lm(price~ .-sqft_lot-sqft_above, data=kc_house)
+model1<-lm(price ~ . -sqft_above -sqft_lot, data=train_set)
 summary(model1)
-car::vif(model1)
+# car::vif(model1)
 pred1<-predict(model1, newdata=val_set_X)
 postResample(10**(pred1), 10**(val_set_y))
 RMSE(10**(pred1), 10**(val_set_y))
@@ -386,27 +386,26 @@ RMSE(10**(pred1), 10**(val_set_y))
 #RMSE can also be calculated as:
 sqrt(mean((10**(pred1)-10**(val_set_y))**2))
 
-
-#model2 (linear model with grade 2)
-
-
-model2<-lm(price~  date+I(date^2)+
-                    + I(bedrooms^2)+
-                    + bathrooms + 
-                    + sqft_living + I(sqft_living^2)+
-                    + sqft_lot + I(sqft_lot^2)+
-                    + floors +
-                    + waterfront + view + 
-                    + condition+I(condition^2)+
-                    + grade + 
-                    + sqft_above + 
-                    + yr_built + I(yr_built^2)+
-                    + yr_last_renovation + I(yr_last_renovation^2)+
-                    + zipcode + 
-                    + lat + I(lat^2)+
-                    + long + I(long^2)+
-                    + sqft_living15 + I(sqft_living15^2)+
-                    + sqft_lot15  )
+# Linear model of grade 2
+model2<-lm(price ~  date + I(date^2)
+          + I(bedrooms^2)
+          + bathrooms
+          + sqft_living + I(sqft_living^2)
+          + sqft_lot + I(sqft_lot^2)
+          + floors
+          + waterfront 
+          + view
+          + condition
+          + grade
+          + sqft_above
+          + yr_built + I(yr_built^2)
+          + yr_last_renovation + I(yr_last_renovation^2)
+          + zipcode
+          + lat + I(lat^2)
+          + long + I(long^2)
+          + sqft_living15 + I(sqft_living15^2)
+          + sqft_lot15,
+          data=train_set)
 
 summary(model2)
 pred2<-predict(model2, val_set_X)
@@ -441,25 +440,26 @@ hist(model2$residuals, breaks = 100)
 # RMSE(10**(pred3),10**(val_set_y))
 # plot(val_set_y,pred3,  xlim=c(0,3000),ylim=c(0,3000))
 
-dim(cor(kc_house)[,19])
+# dim(cor(kc_house)[,19])
 
-model3<-lm(price~  date+I(date^2)+I(date^3)+
-              + bedrooms+I(bedrooms^2)+
-              + bathrooms + I(bathrooms^2)+
-              + sqft_living + I(sqft_living^2)+
-              + sqft_lot + I(sqft_lot^2)+
-              + floors + I(floors^2)+
-              + waterfront + view + I(view^2)+
-              + condition+I(condition^2)+
-              + grade + I(grade^2)+
-              + sqft_above + I(sqft_above^2)+
-              + yr_built + I(yr_built^2)+
-              + yr_last_renovation + I(yr_last_renovation^2)+
-              + zipcode + I(zipcode^2)+
-              + lat + I(lat^2)+
-              + long + I(long^2)+
-              + sqft_living15 + I(sqft_living15^2)+
-              + sqft_lot15 + I(sqft_lot15^2) )
+model3<-lm(price ~ I(date^3)
+          + I(bedrooms^2)
+          + bathrooms
+          + sqft_living + I(sqft_living^3)
+          + sqft_lot + I(sqft_lot^2) + I(sqft_lot^3)
+          + I(floors^2) + I(floors^3)
+          + waterfront 
+          + view + I(view^2) + I(view^3)
+          + condition
+          + I(grade^2) + I(grade^3)
+          + sqft_above + I(sqft_above^2) + I(sqft_above^3)
+          + yr_built + I(yr_built^2) + I(yr_built^3)
+          + I(yr_last_renovation^2) + I(yr_last_renovation^3)
+          + I(zipcode^2)
+          + lat + I(lat^2)
+          + long + I(long^2)
+          + sqft_living15 + I(sqft_living15^2) + I(sqft_living15^3),
+          data=train_set)
 
 summary(model3)
 pred3<-predict(model3, newdata=val_set_X)
@@ -472,26 +472,49 @@ RMSE(10**(pred3),10**(val_set_y))
 # TO BE ADDED!!!
 # pairs(kc_house, columns=c("date","bedrooms","bathrooms","sqft_living","sqft_above","price"))
 
-
-#work in progress... using the function "poly" to simplify sintax
-# model4<-lm(price~ poly(date,4)+poly(bedrooms,4) + poly(bathrooms,4) + poly(sqft_living,4) +
-#              poly(sqft_lot,4) + poly(floors,4) +
-#              waterfront +poly(view,4) +poly(condition,4) +poly(grade,4) +poly(sqft_above,4) +poly(yr_built,4) +
-#              poly(yr_last_renovation,4) +poly(zipcode,4) +poly(lat,4) +poly(long,4) +poly(sqft_living15 ,4) +poly(sqft_lot15,4),data=train_set)
-# summary(model4)
-formula.4 <- "price~ I(date^4)+ I(bedrooms^3)+  bathrooms+ sqft_living+I(sqft_living^4) +
-             poly(sqft_lot,1) + floors + waterfront +view +I(view^3)+I(view^4) + poly(condition,1) +
-             +grade + poly(sqft_above,3) + I(yr_built^2) +
-             +poly(yr_last_renovation,3) + poly(zipcode,1) + poly(lat,4) + poly(long,4) + sqft_living15 + I(sqft_living15^2) +I(sqft_living15^4)"
-model4<-lm(as.formula(formula.4),data=train_set)
+model4<-lm(price ~ date + I(date^2) + I(date^3) + I(date^4)
+          + bedrooms + I(bedrooms^2) + I(bedrooms^3) + I(bedrooms^4)
+          + bathrooms + I(bathrooms^2) + I(bathrooms^3) + I(bathrooms^4)
+          + sqft_living + I(sqft_living^2) + I(sqft_living^3) + I(sqft_living^4)
+          + sqft_lot + I(sqft_lot^2) + I(sqft_lot^3) + I(sqft_lot^4)
+          + floors + I(floors^2) + I(floors^3) + I(floors^4)
+          + waterfront 
+          + view + I(view^2) + I(view^3) + I(view^4)
+          + condition + I(condition^2) + I(condition^3) + I(condition^4)
+          + grade + I(grade^2) + I(grade^3) + I(grade^4)
+          + sqft_above + I(sqft_above^2) + I(sqft_above^3) + I(sqft_above^4)
+          + yr_built + I(yr_built^2) + I(yr_built^3) + I(yr_built^4)
+          + yr_last_renovation + I(yr_last_renovation^2) + I(yr_last_renovation^3) + I(yr_last_renovation^4)
+          + zipcode + I(zipcode^2) + I(zipcode^3) + I(zipcode^4)
+          + lat + I(lat^2) + I(lat^3) + I(lat^4)
+          + long + I(long^2) + I(long^3) + I(long^4)
+          + sqft_living15 + I(sqft_living15^2) + I(sqft_living15^3) + I(sqft_living15^4)
+          + sqft_lot15 + I(sqft_lot15^2) + I(sqft_lot15^3) + I(sqft_lot15^4),
+          data=train_set)
 summary(model4)
-anova(model3,model4)
 pred4<-predict(model4, newdata=val_set_X)
 postResample(10**(pred4),10** (val_set_y))
 RMSE(10**(pred4),10** (val_set_y))
 
 
-
+model5<-lm(price~ date + I(date^2) + I(date^3) + I(date^4) + I(date^5)
+           + bedrooms + I(bedrooms^2) + I(bedrooms^3) + I(bedrooms^4) + I(bedrooms^5)
+           + bathrooms + I(bathrooms^2) + I(bathrooms^3) + I(bathrooms^4) + I(bathrooms^5)
+           + sqft_living + I(sqft_living^2) + I(sqft_living^3) + I(sqft_living^4) + I(sqft_living^5)
+           + sqft_lot + I(sqft_lot^2) + I(sqft_lot^3) + I(sqft_lot^4) + I(sqft_lot^5)
+           + floors + I(floors^2) + I(floors^3) + I(floors^4) + I(floors^5)
+           + waterfront 
+           + view + I(view^2) + I(view^3) + I(view^4) + I(view^5)
+           + condition + I(condition^2) + I(condition^3) + I(condition^4) + I(condition^5)
+           + grade + I(grade^2) + I(grade^3) + I(grade^4) + I(grade^5)
+           + sqft_above + I(sqft_above^2) + I(sqft_above^3) + I(sqft_above^4) + I(sqft_above^5)
+           + yr_built + I(yr_built^2) + I(yr_built^3) + I(yr_built^4) + I(yr_built^5)
+           + yr_last_renovation + I(yr_last_renovation^2) + I(yr_last_renovation^3) + I(yr_last_renovation^4) + I(yr_last_renovation^5)
+           + zipcode + I(zipcode^2) + I(zipcode^3) + I(zipcode^4) + I(zipcode^5)
+           + lat + I(lat^2) + I(lat^3) + I(lat^4) + I(lat^5)
+           + long + I(long^2) + I(long^3) + I(long^4) + I(long^5)
+           + sqft_living15 + I(sqft_living15^2) + I(sqft_living15^3) + I(sqft_living15^4) + I(sqft_living15^5)
+           + sqft_lot15 + I(sqft_lot15^2) ) + I(sqft_lot15^3) + I(sqft_lot15^4) + I(sqft_lot15^5)
 
 
 library(corrplot)

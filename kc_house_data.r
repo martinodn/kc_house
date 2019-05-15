@@ -1,6 +1,5 @@
 kc_house<-read.csv("kc_house_data.csv")
 
-
 #TODO: dove abbiamo preso i dati, spiegare ogni colonna cosa significa
 
 #check the dimension of the dataset
@@ -159,13 +158,13 @@ map.kc
 library(scatterplot3d)
 library(RColorBrewer)
 # Get colors for labeling the points
-plotvar <- kc_house$price # pick a variable to plot
+plotvar <- price # pick a variable to plot
 nclr <- 8 # number of colors
 plotclr <- brewer.pal(nclr, "PuBu") # get the colors
 colornum <- cut(rank(plotvar), nclr, labels=FALSE)
 colcode <- plotclr[colornum] # assign color
-# 3D Scatter plot
 plot.angle <- 340
+# 3D Scatter plot
 scatterplot3d(kc_house$long, kc_house$lat, plotvar, type="h", angle=plot.angle, color=colcode, pch=20, cex.symbols=2, 
               col.axis="gray", col.grid="gray", xlab="Longitude", ylab="Latitude", zlab="Price")
 
@@ -553,19 +552,16 @@ heatmap(x = cor(kc_house), col = palette, symm = TRUE)
 
 
 ##############################################THE UNTOUCHABLE ZONE!!!! ALERT!!!!! DANGER!!!!
-# models=c(model1,model2,model3,model4)
-# results=c()
-# i=0
-# for(model in models){
-#   i=i+1
-#   pred_i<-predict(model, newdata=val_set_X)
-#   results[i]=postResample(pred4, val_set_y)
-# }
-# train_set<-as.data.frame(train_set)
-# model5<-lm(price ~ poly(train_set,4),data=train_set)
 
-#plot every feature vs price (target)
+# Try model with interactions between positional variables
+model6 <- lm(price ~ lat*long*zipcode - lat:long:zipcode, data=train_set)
+summary(model6)
+# Try predictions over validation dataset
+pred6<-predict(model6, newdata=val_set_X)
+RMSE(10^pred6, 10^val_set_y)
+R2(10^pred6, 10^val_set_y)
 
+set.seed(42)
 
 #Splitting the whole dataset into training and test set
 #Define training indexes
@@ -585,11 +581,11 @@ summary(test$price)
 #Define k for k-fold cross-validation
 k<-10
 #Define an array of formula, to be used in model training
-f<-c(formula.1, formula.2, formula.3, formula.4)
+m<-list(model1, model2, model3, model4, model5)
 # Define a matrix with k rows and p columns for RMSE
-cv.rmse<-matrix(nrow=k, ncol=length(models))
+cv.rmse<-matrix(nrow=k, ncol=length(m))
 # Define a matrix with k rows and p columns for R^2
-cv.rsquared<-matrix(nrow=k, ncol=length(models))
+cv.rsquared<-matrix(nrow=k, ncol=length(m))
 #Split train data in K-fold split
 folds<-createFolds(train$price, k=k, list=FALSE, returnTrain=FALSE)
 #Loop through every fold
@@ -597,25 +593,25 @@ for (i in 1:k) {
   #Get validation set for i-th iteration
   idx.valid<-which(folds==i, arr.ind=TRUE)
   #Loops through every grade of the polynomial specified
-  for (j in 1:length(f)) {
+  for (j in 1:length(m)) {
     #Get validation set
     cv.valid<-train[idx.valid,]
     #Get training set, without validation set
     cv.train<-train[-idx.valid,]
     #Train the model using training set
-    model<-lm(data=cv.train, formula=as.formula(f[j]))
+    model<-update(m[[j]], data=cv.train)
     #Predict values using validation set (without price column)
     cv.predicted<-predict(model, newdata=cv.valid[-19])
     #Add prediction scores to the matrices
-    cv.rmse[i,j]<-RMSE(cv.predicted, cv.valid[19])
-    cv.rsquared[i,j]<-R2(cv.predicted, cv.valid[19])
+    cv.rmse[i,j]<-RMSE(10^cv.predicted, 10^cv.valid[19])
+    cv.rsquared[i,j]<-R2(10^cv.predicted, 10^cv.valid[19])
   }
 }
 #Initialize mean values for prediction scores
 cv.mean.rmse<-c()
 cv.mean.rsquared<-c()
 #Compute the average scores on every fold, for every model
-for (j in 1:length(f)) {
+for (j in 1:length(m)) {
   cv.mean.rmse<-c(cv.mean.rmse, mean(cv.rmse[,j]))
   cv.mean.rsquared<-c(cv.mean.rsquared, mean(cv.rsquared[,j]))
 }
@@ -624,11 +620,11 @@ cv.mean.rmse
 cv.mean.rsquared
 # The best model is the 4-th, by looking at rmse and r-squared
 # Hence, we retrain the best model on the whole dataset
-model <- lm(data=train, formula=as.formula(formula.4))
-summary(model)
+#model <- lm(data=train, formula=as.formula(formula.4))
+#summary(model)
 # Test the best model on the test set
-predicted <- predict(model, newdata=test[-19])
+#predicted <- predict(model, newdata=test[-19])
 # Compute scores on test set
-RMSE(predicted, test[19])
-R2(predicted, test[19])
+#RMSE(predicted, test[19])
+#R2(predicted, test[19])
 

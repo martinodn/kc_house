@@ -370,13 +370,18 @@ cor(kc_house)
 
 
 #BACKWARD VARIABLE SELECTION
+RMSE_values=c()
+
+
+
 #model1 (linear model with grade 1)
 model1<-lm(price ~ . -sqft_above -sqft_lot, data=train_set)
 summary(model1)
 # car::vif(model1)
 pred1<-predict(model1, newdata=val_set_X)
 postResample(10**(pred1), 10**(val_set_y))
-RMSE(10**(pred1), 10**(val_set_y))
+r1<-RMSE(10**(pred1), 10**(val_set_y))
+RMSE_values=c(RMSE_values,r1)
 
 # plot(model1)
 
@@ -409,13 +414,15 @@ model2<-lm(price ~  date + I(date^2)
 
 summary(model2)
 pred2<-predict(model2, val_set_X)
-postResample(pred2, val_set_y)
-RMSE(10**(pred2),10**(val_set_y))
+postResample(10**(pred2), 10**(val_set_y))
+r2<-RMSE(10**(pred2),10**(val_set_y))
+r2
+RMSE_values=c(RMSE_values,r2)
 #with this graph we have the evidence that we can use a linear model to fit the data
 
 #plot(model2)
 hist(model2$residuals, breaks = 100)
-
+anova(model1,model2, test="Chisq")
 
 #polynomial model grade 3
 # model3<-lm(price~ date+I(date^2)+ I(date^3)+bedrooms+I(bedrooms^2) +I(bedrooms^3) + bathrooms + I(bathrooms^2)+
@@ -463,10 +470,11 @@ model3<-lm(price ~ I(date^3)
 
 summary(model3)
 pred3<-predict(model3, newdata=val_set_X)
-postResample(pred3, val_set_y)
+postResample(10**(pred3), 10**(val_set_y))
 
-RMSE(10**(pred3),10**(val_set_y))
-
+r3<-RMSE(10**(pred3),10**(val_set_y))
+anova(model2,model3, test="Chisq")
+RMSE_values=c(RMSE_values,r3)
 
 # TO BE ADDED!!!
 # pairs(kc_house, columns=c("date","bedrooms","bathrooms","sqft_living","sqft_above","price"))
@@ -493,28 +501,39 @@ model4<-lm(price ~ I(date^3)
 summary(model4)
 pred4<-predict(model4, newdata=val_set_X)
 postResample(10**(pred4),10** (val_set_y))
-RMSE(10**(pred4),10** (val_set_y))
+r4<-RMSE(10**(pred4),10** (val_set_y))
+RMSE_values=c(RMSE_values,r4)
+anova(model3,model4, test="Chisq")
 
-
-model5<-lm(price~ date + I(date^2) + I(date^3) + I(date^4) + I(date^5)
-           + bedrooms + I(bedrooms^2) + I(bedrooms^3) + I(bedrooms^4) + I(bedrooms^5)
-           + bathrooms + I(bathrooms^2) + I(bathrooms^3) + I(bathrooms^4) + I(bathrooms^5)
+model5<-lm(price~ I(date^4)
+           + I(bedrooms^3) 
+           + bathrooms  
            + sqft_living + I(sqft_living^2) + I(sqft_living^3) + I(sqft_living^4) + I(sqft_living^5)
-           + sqft_lot + I(sqft_lot^2) + I(sqft_lot^3) + I(sqft_lot^4) + I(sqft_lot^5)
-           + floors + I(floors^2) + I(floors^3) + I(floors^4) + I(floors^5)
+           + I(sqft_lot^2) + I(sqft_lot^3) + I(sqft_lot^4) 
+           +  I(floors^2) + I(floors^3) 
            + waterfront 
-           + view + I(view^2) + I(view^3) + I(view^4) + I(view^5)
-           + condition + I(condition^2) + I(condition^3) + I(condition^4) + I(condition^5)
-           + grade + I(grade^2) + I(grade^3) + I(grade^4) + I(grade^5)
-           + sqft_above + I(sqft_above^2) + I(sqft_above^3) + I(sqft_above^4) + I(sqft_above^5)
-           + yr_built + I(yr_built^2) + I(yr_built^3) + I(yr_built^4) + I(yr_built^5)
-           + yr_last_renovation + I(yr_last_renovation^2) + I(yr_last_renovation^3) + I(yr_last_renovation^4) + I(yr_last_renovation^5)
-           + zipcode + I(zipcode^2) + I(zipcode^3) + I(zipcode^4) + I(zipcode^5)
-           + lat + I(lat^2) + I(lat^3) + I(lat^4) + I(lat^5)
-           + long + I(long^2) + I(long^3) + I(long^4) + I(long^5)
-           + sqft_living15 + I(sqft_living15^2) + I(sqft_living15^3) + I(sqft_living15^4) + I(sqft_living15^5)
-           + sqft_lot15 + I(sqft_lot15^2) ) + I(sqft_lot15^3) + I(sqft_lot15^4) + I(sqft_lot15^5)
+           + view + I(view^2) + I(view^3) 
+           + I(condition^2) + I(condition^3)
+           + I(grade^2) + I(grade^3) 
+           + sqft_above + I(sqft_above^2)  + I(sqft_above^5)
+           + yr_built + I(yr_built^2) + I(yr_built^3)
+           + I(yr_last_renovation^2) + I(yr_last_renovation^3) 
+           + I(zipcode^2) 
+           + lat + I(lat^2) + I(lat^4) 
+           + long + I(long^2) 
+           + sqft_living15 + I(sqft_living15^2)
+           + sqft_lot15 + I(sqft_lot15^2) + I(sqft_lot15^3) + I(sqft_lot15^4), 
+           data=train_set)
+summary(model5)
+pred5<-predict(model5, newdata=val_set_X)
+postResample(10**(pred5),10**(val_set_y))
+r5<-RMSE(10**(pred5),10**(val_set_y))
+RMSE_values=c(RMSE_values,r5)
+plot(RMSE_values)
 
+
+#we stop with the polynomial 5 because we see that the we have a lower adjusted R-squared and also the RMSE on the
+#previously unseen data is worse, so this can be due to overfitting of the training set.
 
 library(corrplot)
 

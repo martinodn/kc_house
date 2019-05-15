@@ -468,27 +468,26 @@ postResample(pred3, val_set_y)
 RMSE(10**(pred3),10**(val_set_y))
 
 
-
 # TO BE ADDED!!!
 # pairs(kc_house, columns=c("date","bedrooms","bathrooms","sqft_living","sqft_above","price"))
 
-model4<-lm(price ~ date + I(date^2) + I(date^3) + I(date^4)
-          + bedrooms + I(bedrooms^2) + I(bedrooms^3) + I(bedrooms^4)
+model4<-lm(price ~ I(date^3)
+          + I(bedrooms^3)
           + bathrooms + I(bathrooms^2) + I(bathrooms^3) + I(bathrooms^4)
-          + sqft_living + I(sqft_living^2) + I(sqft_living^3) + I(sqft_living^4)
-          + sqft_lot + I(sqft_lot^2) + I(sqft_lot^3) + I(sqft_lot^4)
-          + floors + I(floors^2) + I(floors^3) + I(floors^4)
+          + sqft_living + I(sqft_living^2)
+          + sqft_lot + I(sqft_lot^2) + I(sqft_lot^3)
+          + floors
           + waterfront 
-          + view + I(view^2) + I(view^3) + I(view^4)
-          + condition + I(condition^2) + I(condition^3) + I(condition^4)
+          + view + I(view^2) + I(view^3)
+          + I(condition^2) + I(condition^3)
           + grade + I(grade^2) + I(grade^3) + I(grade^4)
-          + sqft_above + I(sqft_above^2) + I(sqft_above^3) + I(sqft_above^4)
-          + yr_built + I(yr_built^2) + I(yr_built^3) + I(yr_built^4)
-          + yr_last_renovation + I(yr_last_renovation^2) + I(yr_last_renovation^3) + I(yr_last_renovation^4)
-          + zipcode + I(zipcode^2) + I(zipcode^3) + I(zipcode^4)
-          + lat + I(lat^2) + I(lat^3) + I(lat^4)
-          + long + I(long^2) + I(long^3) + I(long^4)
-          + sqft_living15 + I(sqft_living15^2) + I(sqft_living15^3) + I(sqft_living15^4)
+          + sqft_above + I(sqft_above^2) + I(sqft_above^3)
+          + yr_built + I(yr_built^2) + I(yr_built^3)
+          + I(yr_last_renovation^2) + I(yr_last_renovation^3)
+          + zipcode
+          + lat + I(lat^2) + I(lat^4)
+          + long + I(long^2)
+          + sqft_living15 + I(sqft_living15^2)
           + sqft_lot15 + I(sqft_lot15^2) + I(sqft_lot15^3) + I(sqft_lot15^4),
           data=train_set)
 summary(model4)

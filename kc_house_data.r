@@ -245,12 +245,47 @@ boxplot(price~bedrooms, xlab="bedrooms", ylab="price",main="Price by bedrooms")
 #we see that the greater the number of bedrooms, the greater the price. Also we can notice that
 #there is a big number of outliers in the upper part for values of bedrooms in the range 2-6.
 
+kc_house %>%
+  group_by(bedrooms) %>%
+  summarise(PriceMedian = median(10**(price), na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(bedrooms = reorder(bedrooms,PriceMedian)) %>%
+  arrange(desc(PriceMedian)) %>%
 
+  ggplot(aes(x = bedrooms,y = PriceMedian)) +
+  geom_bar(stat='identity',colour="white", fill = "yellow") +
+  geom_text(aes(x = bedrooms, y = 1, label = paste0("(",PriceMedian,")",sep="")),
+            hjust=0, vjust=.5, size = 4, colour = 'black',
+            fontface = 'bold') +
+  labs(x = 'bedrooms', 
+       y = 'Median Price', 
+       title = 'Median price per number of bedrooms') +
+  coord_flip() + 
+  theme_bw()
 #BATHROOMS (cor=0.55082290)
 boxplot(price~bathrooms, xlab="bathrooms", ylab="price",main="Price by bathrooms")
 #Also in this case, and more than for the previous one, it is clear that if we increase the number of 
 #bathrooms, also the price increases.
 
+kc_house %>%
+  group_by(bathrooms) %>%
+  summarise(PriceMedian = median(10**(price), na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(bathrooms = reorder(bathrooms,PriceMedian)) %>%
+  arrange(desc(PriceMedian)) %>%
+  head(10) %>%
+  
+  
+  ggplot(aes(x = bathrooms,y = PriceMedian)) +
+  geom_bar(stat='identity',colour="white", fill = fillColor2) +
+  geom_text(aes(x = bathrooms, y = 1, label = paste0("(",PriceMedian,")",sep="")),
+            hjust=0, vjust=.5, size = 4, colour = 'black',
+            fontface = 'bold') +
+  labs(x = 'bathrooms', 
+       y = 'Median Price', 
+       title = 'bathrooms and Median Price') +
+  coord_flip() + 
+  theme_bw()
 
 #SQFT_LIVING (cor=0.69536476)
 plot(price~sqft_living,main="Price by sqft_living")
@@ -299,6 +334,23 @@ boxplot(price~condition, xlab="condition", main="Price by condition")
 boxplot(price~grade, xlab="grade", main="Price by grade")
 #grade has a strong correlation with the target!!
 
+kc_house %>%
+  group_by(grade) %>%
+  summarise(PriceMedian = median(10**(price), na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(grade = reorder(grade,PriceMedian)) %>%
+  arrange(desc(PriceMedian)) %>%
+  
+  ggplot(aes(x = grade,y = PriceMedian)) +
+  geom_bar(stat='identity',colour="white", fill = fillColor) +
+  geom_text(aes(x = grade, y = 1, label = paste0("(",PriceMedian,")",sep="")),
+            hjust=0, vjust=.5, size = 4, colour = 'black',
+            fontface = 'bold') +
+  labs(x = 'grade', 
+       y = 'Median Price', 
+       title = 'grade and Median Price') +
+  coord_flip() + 
+  theme_bw()
 
 #SQFT_ABOVE(cor=0.60184347)
 plot(price~sqft_above)
@@ -502,7 +554,7 @@ RMSE_values=c(RMSE_values,r2)
 
 #plot(model2)
 hist(model2$residuals, breaks = 100)
-anova(model1,model2, test="Chisq")
+# anova(model1,model2, test="Chisq")
 
 #polynomial model grade 3
 # model3<-lm(price~ date+I(date^2)+ I(date^3)+bedrooms+I(bedrooms^2) +I(bedrooms^3) + bathrooms + I(bathrooms^2)+
@@ -553,7 +605,7 @@ pred3<-predict(model3, newdata=val_set_X)
 postResample(10**(pred3), 10**(val_set_y))
 
 r3<-RMSE(10**(pred3),10**(val_set_y))
-anova(model2,model3, test="Chisq")
+# anova(model2,model3, test="Chisq")
 RMSE_values=c(RMSE_values,r3)
 
 # TO BE ADDED!!!
@@ -583,7 +635,15 @@ pred4<-predict(model4, newdata=val_set_X)
 postResample(10**(pred4),10** (val_set_y))
 r4<-RMSE(10**(pred4),10** (val_set_y))
 RMSE_values=c(RMSE_values,r4)
-anova(model3,model4, test="Chisq")
+# anova(model3,model4, test="Chisq")
+
+#diagnostic plots
+par(mfrow=c(2,2))
+plot(model4)
+
+
+
+
 
 model5<-lm(price~ I(date^4)
            + I(bedrooms^3) 
@@ -635,7 +695,7 @@ model6<-lm(price~poly(date,6)+
 summary(model6)
 pred6<-predict(model6, newdata=val_set_X)
 postResample(10**(pred6),10**(val_set_y))
-anova(model5,model6)
+# anova(model5,model6)
 r6<-RMSE(10**(pred6),10**(val_set_y))
 RMSE_values=c(RMSE_values,r6)
 RMSE_values
@@ -651,12 +711,14 @@ palette = colorRampPalette(c("green", "white", "red")) (20)
 heatmap(x = cor(kc_house), col = palette, symm = TRUE)
 
 formula = price ~ .-sqft_above -sqft_lot
-
 fitControl <- trainControl(method="cv",number = 15)
-
-KCHouseDataModel = train(formula, data = train_set,
-                         method = "lm",trControl = fitControl,metric="RMSE")
+KCHouseDataModel = train(formula, data = train_set, method = "lm",trControl = fitControl,metric="RMSE")
 importance = varImp(KCHouseDataModel)
+
+# we can design a CV with regularization also:
+formulax = price ~ .
+fitControlx <- trainControl(method="cv",number = 10)
+kc_houseX = train(formulax, data = train_set, method = "glmnet",trControl = fitControlx,metric="RMSE")
 
 #####
 
@@ -705,9 +767,32 @@ KCHouseDataModel4 = train(formula4, data = train_set,
 KCHouseDataModel4
 importance4 = varImp(KCHouseDataModel4)
 
+formula6<-price~poly(date,6)+
+  poly(bedrooms,6)+
+  poly(bathrooms,6)+
+  poly(sqft_living,6)+
+  poly(sqft_lot,6)+
+  poly(floors,5)+
+  waterfront+
+  poly(view,4)+
+  poly(condition,4)+
+  poly(grade,6)+
+  poly(sqft_above,6)+
+  poly(yr_built,6)+
+  poly(yr_last_renovation,6)+
+  poly(zipcode,6)+
+  poly(lat,6)+
+  poly(long,6)+
+  poly(sqft_living15,6)+
+  poly(sqft_lot15,6)
+fitControl6 <- trainControl(method="cv",number = 10)
+KCHouseDataModel6 = train(formula6, data = train_set, method = "lm",trControl = fitControl6,metric="RMSE")
+importance6<- varImp(KCHouseDataModel6)
 
 
-
+row.names(importance6[[1]])
+importance6[[1]]
+typeof(importance6[[1]])
 PlotImportance = function(importance)
 {
   varImportance <- data.frame(Variables = row.names(importance[[1]]), 
@@ -728,18 +813,65 @@ PlotImportance = function(importance)
     labs(x = 'Variables', title = 'Relative Variable Importance') +
     coord_flip() + 
     theme_bw()
-  
-  
 }
 
-PlotImportance(importance4)
 PlotImportance(importance)
 PlotImportance(importance2)
+PlotImportance(importance4)
+# PlotImportance(importance6)
 
 
+KCHouseData2 = kc_house %>%
+  select(-date)
+set.seed(13)
 
 
+PlotImportance(importance)
+# 
+# PCAData = kc_house %>%
+#   select(lat,long)
+# 
+# pca = prcomp(PCAData, scale. = T)
+# 
+# KCHouseData_pca <- predict(pca, newdata = PCAData)
+# 
+# KCHouseData_pca = as.data.frame(KCHouseData_pca)
+# 
+# KCHouseData2 = cbind(KCHouseData2,KCHouseData_pca)
+# 
+# dim(KCHouseData2)
+# kc_house %>% 
+#   filter(!is.na(lat)) %>% 
+#   filter(!is.na(long)) %>% 
+#   
+#   ggplot(aes(x=lat,y=long))+
+#   geom_point(color = "blue")+
+#   
+#   theme_bw()+
+#   theme(axis.title = element_text(size=16),axis.text = element_text(size=14))+
+#   xlab("Latitude")+
+#   ylab("Longitude")
+# 
+# pca = prcomp(PCAData, scale. = T)
+# 
+# biplot (pca , scale =0)
 
+formula<-price~ .
+
+xgbGrid <- expand.grid(nrounds = 500,
+                       max_depth = 4,
+                       eta = .05,
+                       gamma = 0,
+                       colsample_bytree = .5,
+                       min_child_weight = 1,
+                       subsample = 1)
+
+fitControl <- trainControl(method="cv",number = 10)
+t = train(formula, data = train_set,
+                            method = "xgbTree",trControl = fitControl,
+                            tuneGrid = xgbGrid,na.action = na.pass,metric="RMSE")
+
+importance = varImp(KCHouseDataModelXGB)
 
 
 

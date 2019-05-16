@@ -919,71 +919,8 @@ model7 <- update(model7, . ~ . -sqft_lot -grade:lat -sqft_living:lat -sqft_above
 summary(model7)
 # Validation
 pred7<-predict(model7, newdata=val_set_X)
-RMSE(10^pred7, 10^val_set_y) # 180381.8
-R2(10^pred7, 10^val_set_y) # 0.7668159
-
-# # Model 7: takes into account every interaction between variables
-# rhs <- paste(colnames(train)[-19], collapse=' + ')
-# rhs <- paste('(', rhs, ')^2', sep='')
-# lhs <- 'price ~'
-# formula7 <- as.formula(paste(lhs, rhs))
-# model7 <- lm(formula7, data=train)
-# summary(model7)
-# pred7<-predict(model7, newdata=val_set_X)
-# RMSE(10^pred7, 10^val_set_y)
-# R2(10^pred7, 10^val_set_y)
-# # Execute automatic feature selection
-# regfit.full <- regsubsets(formula7, method="backward", data=train, really.big=T)
-# summary(regfit.full)
-# 
-# reg.summary <- summary(regfit.full)
-# 
-# # elements of reg.summary
-# names(reg.summary)
-# 
-# # R^2 statistic for the best model of every subset group
-# reg.summary$rsq
-# reg.summary$bic
-# 
-# #
-# # second group of plots 
-# #
-# 
-# plot(regfit.full,scale="r2")
-# plot(regfit.full,scale="adjr2")
-# plot(regfit.full,scale="Cp")
-# plot(regfit.full,scale="bic")
-# 
-# # Cp best
-# coef(regfit.full,8)
-# 
-# # BIC best
-# coef(regfit.full,4)
-# 
-# #
-# # first group of plots 
-# #
-# par(mfrow=c(2,2))
-# 
-# # panel 1
-# plot(reg.summary$rss,xlab="Number of Variables",ylab="RSS",type="l")
-# 
-# # panel 2
-# plot(reg.summary$adjr2,xlab="Number of Variables",ylab="Adjusted RSq",type="l")
-# which.max(reg.summary$adjr2)
-# points(7,reg.summary$adjr2[7], col="red",cex=2,pch=20)
-# 
-# # panel 3
-# plot(reg.summary$cp,xlab="Number of Variables",ylab="Cp",type='l')
-# which.min(reg.summary$cp)
-# points(6,reg.summary$cp[6],col="red",cex=2,pch=20)
-# 
-# # panel 4
-# plot(reg.summary$bic,xlab="Number of Variables",ylab="BIC",type='l')
-# which.min(reg.summary$bic)
-# points(4,reg.summary$bic[4],col="red",cex=2,pch=20)
-# 
-# par(mfrow=c(1,1))
+RMSE(10^pred7, 10^val_set_y)
+R2(10^pred7, 10^val_set_y)
 
 #Splitting the whole dataset into training and test set
 #Define training indexes

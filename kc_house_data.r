@@ -465,7 +465,6 @@ MapPriceGroups(PriceGroup4,"orange")
 MapPriceGroups(PriceGroup5,"#0B5345")
 MapPriceGroups(PriceGroup6,"red")
 
-
 #ZIPCODE in function of latitude and longitude
 #Not that zipcode is an integer value, but is referred to a discrete variable
 #First we are interested to know how many zipcodes are there
@@ -929,7 +928,6 @@ pred7<-predict(model7, newdata=val_set_X)
 RMSE(10^pred7, 10^val_set_y)
 R2(10^pred7, 10^val_set_y)
 
-
 #Splitting the whole dataset into training and test set
 #Define training indexes
 set.seed(29)
@@ -988,15 +986,12 @@ lines(cv.rmse[,4], col="orange") # 4th model
 lines(cv.rmse[,5], col="purple") # 5th model
 #add legend
 
-
 # Plot the R2 at every iteration
 plot(cv.rsquared[,1], type="l", col="red", ylim=c(0.3,1)) # 1st model
 lines(cv.rsquared[,2], col="blue") #2nd model
 lines(cv.rsquared[,3], col="yellow") # 3rd mode
 lines(cv.rsquared[,4], col="orange") # 4th model
 lines(cv.rsquared[,5], col="purple") # 5th model
-#add legend
-
 
 #Initialize mean values for prediction scores
 cv.mean.rmse<-c()

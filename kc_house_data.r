@@ -1,3 +1,6 @@
+library(tidyverse)
+
+
 kc_house<-read.csv("kc_house_data.csv")
 
 #TODO: dove abbiamo preso i dati, spiegare ogni colonna cosa significa
@@ -205,26 +208,7 @@ attach(kc_house)
 # length(yr_last_renovation)
 # dim(kc_house)
 
-#Import caret library
-library(caret)
-#Define the random seed (otherwise we cannot repeat exactly the same experiment)
-set.seed(42)
-#try to evaluate performance of different models splitting the whole set into training-validation-test set
 
-
-id.train<-createDataPartition(price, p=.80, list=FALSE)
-train_set<-kc_house[id.train,] #80
-test_set<-kc_house[-id.train,] #20
-# 
-id.val<-createDataPartition(train_set$price, p=.15, list=FALSE)
-# id.test<-createDataPartition(price, p=.20, list=FALSE)
-val_set<-train_set[id.val,] 
-train_set<-train_set[-id.val,] 
-
-val_set_X<-val_set[,-19]
-val_set_y<-val_set[,19]
-test_set_X<-test_set[,-19]
-test_set_y<-test_set[,19]
 
 #DATE (cor=-0.00570)
 #we notice we have a continuous detection for the dates: almost every day (starting from the initial one)
@@ -246,19 +230,23 @@ plot(average_price_bydate, col=1,main="Average price by date")
 lines(loess.smooth(date, price), col=2, lty=5)
 #we see that the date does not influence so much the price of the house
 
+
 #BEDROOMS (cor=0.35100546)
 boxplot(price~bedrooms, xlab="bedrooms", ylab="price",main="Price by bedrooms")
 #we see that the greater the number of bedrooms, the greater the price. Also we can notice that
 #there is a big number of outliers in the upper part for values of bedrooms in the range 2-6.
+
 
 #BATHROOMS (cor=0.55082290)
 boxplot(price~bathrooms, xlab="bathrooms", ylab="price",main="Price by bathrooms")
 #Also in this case, and more than for the previous one, it is clear that if we increase the number of 
 #bathrooms, also the price increases.
 
+
 #SQFT_LIVING (cor=0.69536476)
 plot(price~sqft_living,main="Price by sqft_living")
 lines(loess.smooth(sqft_living, price), col=3)
+
 
 #we can see data better:
 average_price_bysqftliving <-aggregate(price~sqft_living, FUN=mean, data=kc_house)
@@ -278,13 +266,16 @@ lines(loess.smooth(sqft_lot, price), col=3)
 
 #sqft_lot feature does not influence so much the target, as we can see from the plot
 
+
 #FLOORS (cor= 0.31059266)
 boxplot(price~floors, xlab="floors", main="Price by floor")
 #there is a little increase in the price as floors increase, but not so much
 
+
 #WATERFRONT (cor=0.17459026)
 boxplot(price~waterfront, xlab="waterfront", main="Price by waterfront")
 #low correlation
+
 
 #VIEW (cor= 0.34653430)
 boxplot(price~view, xlab="view", main="Price by view")
@@ -293,6 +284,7 @@ boxplot(price~view, xlab="view", main="Price by view")
 
 #CONDITION (cor= 0.03949428)
 boxplot(price~condition, xlab="condition", main="Price by condition")
+
 
 #GRADE (cor= 0.70366105)
 boxplot(price~grade, xlab="grade", main="Price by grade")
@@ -369,6 +361,30 @@ cor(kc_house)
 
 
 #BACKWARD VARIABLE SELECTION
+
+#Import caret library
+library(caret)
+#Define the random seed (otherwise we cannot repeat exactly the same experiment)
+set.seed(29)
+#try to evaluate performance of different models splitting the whole set into training-validation-test set
+
+
+id.train<-createDataPartition(price, p=.80, list=FALSE)
+train_set<-kc_house[id.train,] #80
+test_set<-kc_house[-id.train,] #20
+
+id.val<-createDataPartition(train_set$price, p=.15, list=FALSE)
+
+# id.test<-createDataPartition(price, p=.20, list=FALSE)
+id.val
+val_set<-train_set[id.val,] 
+train_set<-train_set[-id.val,] 
+
+val_set_X<-val_set[,-19]
+val_set_y<-val_set[,19]
+test_set_X<-test_set[,-19]
+test_set_y<-test_set[,19]
+
 RMSE_values=c()
 
 
@@ -523,12 +539,37 @@ model5<-lm(price~ I(date^4)
            + sqft_living15 + I(sqft_living15^2)
            + sqft_lot15 + I(sqft_lot15^2) + I(sqft_lot15^3) + I(sqft_lot15^4), 
            data=train_set)
+
 summary(model5)
 pred5<-predict(model5, newdata=val_set_X)
 postResample(10**(pred5),10**(val_set_y))
 r5<-RMSE(10**(pred5),10**(val_set_y))
 RMSE_values=c(RMSE_values,r5)
 plot(RMSE_values)
+
+model6<-lm(price~poly(date,6)+
+            poly(bedrooms,6)+
+            poly(bathrooms,6)+
+            poly(sqft_living,6)+
+            poly(sqft_lot,6)+
+            poly(floors,5)+
+            waterfront+
+            poly(view,4)+
+            poly(condition,4)+
+            poly(grade,6)+
+            poly(sqft_above,6)+
+            poly(yr_built,6)+
+            poly(yr_last_renovation,6)+
+            poly(zipcode,6)+
+            poly(lat,6)+
+            poly(long,6)+
+            poly(sqft_living15,6)+
+            poly(sqft_lot15,6),
+            data=train_set)
+
+summary(model6)
+pred6<-predict(model6, newdata=val_set_X)
+postResample(10**(pred6),10**(val_set_y))
 
 
 #we stop with the polynomial 5 because we see that the we have a lower adjusted R-squared and also the RMSE on the
@@ -541,7 +582,159 @@ corrplot(cor(kc_house))
 palette = colorRampPalette(c("green", "white", "red")) (20)
 heatmap(x = cor(kc_house), col = palette, symm = TRUE)
 
+formula = price ~ .-sqft_above -sqft_lot
 
+fitControl <- trainControl(method="cv",number = 15)
+
+KCHouseDataModel = train(formula, data = train_set,
+                         method = "lm",trControl = fitControl,metric="RMSE")
+importance = varImp(KCHouseDataModel)
+
+#####
+
+formula2<-price~ date + I(date^2)+ I(bedrooms^2)+ bathrooms+
+                  + sqft_living + I(sqft_living^2)+
+                  + sqft_lot + I(sqft_lot^2)+
+                  + floors+
+                  + waterfront +
+                  + view+
+                  + condition+
+                  + grade+
+                  + sqft_above+
+                  + yr_built + I(yr_built^2)+
+                  + yr_last_renovation + I(yr_last_renovation^2)+
+                  + zipcode+
+                  + lat + I(lat^2)+
+                  + long + I(long^2)+
+                  + sqft_living15 + I(sqft_living15^2)+
+                  + sqft_lot15
+
+fitControl2 <- trainControl(method="cv",number = 10)
+KCHouseDataModel2 = train(formula2, data = train_set, method = "lm",trControl = fitControl2,metric="RMSE")
+KCHouseDataModel2
+importance2<-varImp(KCHouseDataModel2)
+
+
+formula4<-price ~ I(date^3)+ I(bedrooms^3)+ bathrooms + I(bathrooms^2) + I(bathrooms^3) + I(bathrooms^4)+ 
+                  sqft_living + I(sqft_living^2)+ sqft_lot + I(sqft_lot^2) + I(sqft_lot^3)+ floors+ waterfront + view + I(view^2) +
+                  + I(view^3)+ I(condition^2) + I(condition^3)+
+                  + grade + I(grade^2) + I(grade^3) + I(grade^4)+
+                  + sqft_above + I(sqft_above^2) + I(sqft_above^3)+
+                  + yr_built + I(yr_built^2) + I(yr_built^3)+
+                  + I(yr_last_renovation^2) + I(yr_last_renovation^3)+
+                  + zipcode+
+                  + lat + I(lat^2) + I(lat^4)+
+                  + long + I(long^2)+
+                  + sqft_living15 + I(sqft_living15^2)+
+                  + sqft_lot15 + I(sqft_lot15^2) + I(sqft_lot15^3) + I(sqft_lot15^4)
+                  
+
+fitControl4 <- trainControl(method="cv",number = 10)
+
+KCHouseDataModel4 = train(formula4, data = train_set,
+                         method = "lm",trControl = fitControl4,metric="RMSE")
+
+KCHouseDataModel4
+
+
+library(boot)
+library(stringr)
+library(lubridate)
+library(DT)
+library(leaflet)
+library(corrplot)
+importance4 = varImp(KCHouseDataModel4)
+
+PlotImportance = function(importance)
+{
+  varImportance <- data.frame(Variables = row.names(importance[[1]]), 
+                              Importance = round(importance[[1]]$Overall,2))
+  
+  # Create a rank variable based on importance
+  rankImportance <- varImportance %>% 
+    mutate(Rank = paste0('#',dense_rank(desc(Importance))))
+  
+  rankImportancefull = rankImportance
+  
+  ggplot(rankImportance, aes(x = reorder(Variables, Importance), 
+                             y = Importance)) +
+    geom_bar(stat='identity',colour="white") +
+    geom_text(aes(x = Variables, y = 1, label = Rank, color="blue"),
+              hjust=0, vjust=.5, size = 4, colour = 'black',
+              fontface = 'bold') +
+    labs(x = 'Variables', title = 'Relative Variable Importance') +
+    coord_flip() + 
+    theme_bw()
+  
+  
+}
+
+PlotImportance(importance4)
+PlotImportance(importance)
+PlotImportance(importance2)
+
+fillColor = "#FFA07A"
+fillColor2 = "#F1C40F"
+
+kc_house$PriceBin<-cut(kc_house$price, c(log10(0),log10(250e3),log10(500e3),log10(750e3),log10(1e6),log10(2e6),log10(999e6)))
+
+center_lon = median(kc_house$long,na.rm = TRUE)
+center_lat = median(kc_house$lat,na.rm = TRUE)
+
+factpal <- colorFactor(c("black","blue","yellow","orange","#0B5345","red"), 
+                       kc_house$PriceBin)
+
+
+
+leaflet(kc_house) %>% addProviderTiles("Esri.NatGeoWorldMap") %>%
+  addCircles(lng = ~long, lat = ~lat, 
+             color = ~factpal(PriceBin))  %>%
+  # controls
+  setView(lng=center_lon, lat=center_lat,zoom = 12) %>%
+  
+  addLegend("bottomright", pal = factpal, values = ~PriceBin,
+            title = "House Price Distribution",
+            opacity = 1)
+
+PriceBinGrouping = function(limit1, limit2)
+{
+  return(
+    
+    kc_house %>%
+      filter(price > limit1) %>%
+      filter(price <= limit2)
+  )
+}
+
+PriceGroup1 = PriceBinGrouping(0,log10(250e3))
+PriceGroup2 = PriceBinGrouping(log10(250e3),log10(500e3))
+PriceGroup3 = PriceBinGrouping(log10(500e3),log10(750e3))
+PriceGroup4 = PriceBinGrouping(log10(750e3),log10(1e6))
+PriceGroup5 = PriceBinGrouping(log10(1e6),log10(2e6))
+PriceGroup6 = PriceBinGrouping(log10(2e6),log10(999e6))
+
+#to show the houses of that group, do for example:
+MapPriceGroups(PriceGroup3,"yellow")
+
+#####CROSS VALIDATION
+# library(crossval)
+# X=kc_house[,-19]
+# y=kc_house[,19]
+# is.factor(y)
+# # summary( lm(y ~ .  -sqft_above -sqft_lot, data=X) )
+# predfun.lm = function(train.x, train.y, test.x, test.y)
+# {
+#   lm.fit = lm(train.y ~ . -sqft_above -sqft_lot, data=train.x)
+#   ynew = predict(lm.fit, test.x )
+#   
+#   # compute squared error risk (MSE)
+#   out = mean( (ynew - test.y)^2 )
+#   return( out )
+# }
+# 
+# set.seed(12345)
+# cv.out = crossval(predfun.lm, train_set[,-19], train_set[,19], K=5, B=20)
+# c(cv.out$stat, cv.out$stat.se) # 68.06480  2.91447
 
 ##############ANALYSIS WITHOUT OUTLIERS maderfuckerzzz
 
@@ -554,14 +747,14 @@ heatmap(x = cor(kc_house), col = palette, symm = TRUE)
 ##############################################THE UNTOUCHABLE ZONE!!!! ALERT!!!!! DANGER!!!!
 
 # Try model with interactions between positional variables
-model6 <- lm(price ~ lat*long*zipcode - lat:long:zipcode, data=train_set)
-summary(model6)
+model7  <- lm(price ~ lat*long*zipcode - lat:long:zipcode, data=train_set)
+cvrusummary(model7)
 # Try predictions over validation dataset
-pred6<-predict(model6, newdata=val_set_X)
-RMSE(10^pred6, 10^val_set_y)
-R2(10^pred6, 10^val_set_y)
+pred7<-predict(model7, newdata=val_set_X)
+RMSE(10^pred7, 10^val_set_y)
+R2(10^pred7, 10^val_set_y)
 
-set.seed(42)
+set.seed(29)
 
 #Splitting the whole dataset into training and test set
 #Define training indexes

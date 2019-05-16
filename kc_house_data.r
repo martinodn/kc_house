@@ -1,5 +1,18 @@
 library(tidyverse)
+library(boot)
+library(stringr)
+library(lubridate)
+library(DT)
+library(leaflet)
+library(caret)
+library(corrplot)
+library(ggplot2)
+library(ggmap)
+library(scatterplot3d)
+library(RColorBrewer)
 
+fillColor = "#FFA07A"
+fillColor2 = "#F1C40F"
 
 kc_house<-read.csv("kc_house_data.csv")
 
@@ -124,9 +137,6 @@ qqnorm(kc_house$sqft_living)
 
 # MAP
 
-# import required libraries
-library(ggplot2)
-library(ggmap)
 
 # Set location bounds (King County)
 location <- c(-140, 35, -90, 57)
@@ -157,9 +167,8 @@ map.kc
 
 # Plotting a simple map: bigger circles mean bigger price
 # For more info, check out http://geog.uoregon.edu/bartlein/courses/geog495/lec05.html
-# First import libraries
-library(scatterplot3d)
-library(RColorBrewer)
+
+
 # Get colors for labeling the points
 plotvar <- price # pick a variable to plot
 nclr <- 8 # number of colors
@@ -342,6 +351,51 @@ plot(average_price_long, col=1,main="Average price by long")
 lines(loess.smooth(long, price), col=5)
 #not so significant the long
 
+#We plot the houses in the map
+bins<-cut(kc_house$price, c(0,log10(250e3),log10(500e3),log10(750e3),log10(1e6),log10(2e6),log10(999e6)))
+
+center_lon = median(kc_house$long,na.rm = TRUE)
+center_lat = median(kc_house$lat,na.rm = TRUE)
+
+factpal <- colorFactor(c("black","blue","yellow","orange","#0B5345","red"), 
+                       bins)
+
+
+leaflet(kc_house) %>% addProviderTiles("Esri.NatGeoWorldMap") %>%
+  addCircles(lng = ~long, lat = ~lat, 
+             color = ~factpal(bins))  %>%
+  # controls
+  setView(lng=center_lon, lat=center_lat,zoom = 12) %>%
+  
+  addLegend("bottomright", pal = factpal, values =~bins,
+            title = "House Price Distribution",
+            opacity = 1)
+
+PriceBinGrouping = function(limit1, limit2)
+{
+  return(
+    
+    kc_house%>%
+      filter(price > limit1) %>%
+      filter(price <= limit2)
+  )
+}
+
+PriceGroup1 = PriceBinGrouping(0,log10(250e3))
+PriceGroup2 = PriceBinGrouping(log10(250e3),log10(500e3))
+PriceGroup3 = PriceBinGrouping(log10(500e3),log10(750e3))
+PriceGroup4 = PriceBinGrouping(log10(750e3),log10(1e6))
+PriceGroup5 = PriceBinGrouping(log10(1e6),log10(2e6))
+PriceGroup6 = PriceBinGrouping(log10(2e6),log10(999e6))
+
+#to show the houses of that group, do for example:
+# MapPriceGroups(PriceGroup1,"black")
+# MapPriceGroups(PriceGroup2,"blue")
+# MapPriceGroups(PriceGroup3,"yellow")
+# MapPriceGroups(PriceGroup4,"orange")
+# MapPriceGroups(PriceGroup5,"#0B5345")
+# MapPriceGroups(PriceGroup6,"red")
+
 
 #SQFT_LIVING_15 (cor=0.61935746)
 plot(price~sqft_living15)
@@ -362,8 +416,7 @@ cor(kc_house)
 
 #BACKWARD VARIABLE SELECTION
 
-#Import caret library
-library(caret)
+
 #Define the random seed (otherwise we cannot repeat exactly the same experiment)
 set.seed(29)
 #try to evaluate performance of different models splitting the whole set into training-validation-test set
@@ -376,7 +429,7 @@ test_set<-kc_house[-id.train,] #20
 id.val<-createDataPartition(train_set$price, p=.15, list=FALSE)
 
 # id.test<-createDataPartition(price, p=.20, list=FALSE)
-id.val
+
 val_set<-train_set[id.val,] 
 train_set<-train_set[-id.val,] 
 
@@ -545,7 +598,7 @@ pred5<-predict(model5, newdata=val_set_X)
 postResample(10**(pred5),10**(val_set_y))
 r5<-RMSE(10**(pred5),10**(val_set_y))
 RMSE_values=c(RMSE_values,r5)
-plot(RMSE_values)
+
 
 model6<-lm(price~poly(date,6)+
             poly(bedrooms,6)+
@@ -570,12 +623,15 @@ model6<-lm(price~poly(date,6)+
 summary(model6)
 pred6<-predict(model6, newdata=val_set_X)
 postResample(10**(pred6),10**(val_set_y))
-
-
+anova(model5,model6)
+r6<-RMSE(10**(pred6),10**(val_set_y))
+RMSE_values=c(RMSE_values,r6)
+RMSE_values
+plot(RMSE_values)
 #we stop with the polynomial 5 because we see that the we have a lower adjusted R-squared and also the RMSE on the
 #previously unseen data is worse, so this can be due to overfitting of the training set.
 
-library(corrplot)
+
 
 
 corrplot(cor(kc_house))
@@ -635,15 +691,10 @@ KCHouseDataModel4 = train(formula4, data = train_set,
                          method = "lm",trControl = fitControl4,metric="RMSE")
 
 KCHouseDataModel4
-
-
-library(boot)
-library(stringr)
-library(lubridate)
-library(DT)
-library(leaflet)
-library(corrplot)
 importance4 = varImp(KCHouseDataModel4)
+
+
+
 
 PlotImportance = function(importance)
 {
@@ -658,7 +709,7 @@ PlotImportance = function(importance)
   
   ggplot(rankImportance, aes(x = reorder(Variables, Importance), 
                              y = Importance)) +
-    geom_bar(stat='identity',colour="white") +
+    geom_bar(stat='identity',colour="white", fill=fillColor) +
     geom_text(aes(x = Variables, y = 1, label = Rank, color="blue"),
               hjust=0, vjust=.5, size = 4, colour = 'black',
               fontface = 'bold') +
@@ -673,68 +724,12 @@ PlotImportance(importance4)
 PlotImportance(importance)
 PlotImportance(importance2)
 
-fillColor = "#FFA07A"
-fillColor2 = "#F1C40F"
-
-kc_house$PriceBin<-cut(kc_house$price, c(log10(0),log10(250e3),log10(500e3),log10(750e3),log10(1e6),log10(2e6),log10(999e6)))
-
-center_lon = median(kc_house$long,na.rm = TRUE)
-center_lat = median(kc_house$lat,na.rm = TRUE)
-
-factpal <- colorFactor(c("black","blue","yellow","orange","#0B5345","red"), 
-                       kc_house$PriceBin)
 
 
 
-leaflet(kc_house) %>% addProviderTiles("Esri.NatGeoWorldMap") %>%
-  addCircles(lng = ~long, lat = ~lat, 
-             color = ~factpal(PriceBin))  %>%
-  # controls
-  setView(lng=center_lon, lat=center_lat,zoom = 12) %>%
-  
-  addLegend("bottomright", pal = factpal, values = ~PriceBin,
-            title = "House Price Distribution",
-            opacity = 1)
 
-PriceBinGrouping = function(limit1, limit2)
-{
-  return(
-    
-    kc_house %>%
-      filter(price > limit1) %>%
-      filter(price <= limit2)
-  )
-}
 
-PriceGroup1 = PriceBinGrouping(0,log10(250e3))
-PriceGroup2 = PriceBinGrouping(log10(250e3),log10(500e3))
-PriceGroup3 = PriceBinGrouping(log10(500e3),log10(750e3))
-PriceGroup4 = PriceBinGrouping(log10(750e3),log10(1e6))
-PriceGroup5 = PriceBinGrouping(log10(1e6),log10(2e6))
-PriceGroup6 = PriceBinGrouping(log10(2e6),log10(999e6))
 
-#to show the houses of that group, do for example:
-MapPriceGroups(PriceGroup3,"yellow")
-
-#####CROSS VALIDATION
-# library(crossval)
-# X=kc_house[,-19]
-# y=kc_house[,19]
-# is.factor(y)
-# # summary( lm(y ~ .  -sqft_above -sqft_lot, data=X) )
-# predfun.lm = function(train.x, train.y, test.x, test.y)
-# {
-#   lm.fit = lm(train.y ~ . -sqft_above -sqft_lot, data=train.x)
-#   ynew = predict(lm.fit, test.x )
-#   
-#   # compute squared error risk (MSE)
-#   out = mean( (ynew - test.y)^2 )
-#   return( out )
-# }
-# 
-# set.seed(12345)
-# cv.out = crossval(predfun.lm, train_set[,-19], train_set[,19], K=5, B=20)
-# c(cv.out$stat, cv.out$stat.se) # 68.06480  2.91447
 
 ##############ANALYSIS WITHOUT OUTLIERS maderfuckerzzz
 

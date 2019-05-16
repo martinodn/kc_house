@@ -170,7 +170,7 @@ map.kc
 
 
 # Get colors for labeling the points
-plotvar <- price # pick a variable to plot
+plotvar <- house$price # pick a variable to plot
 nclr <- 8 # number of colors
 plotclr <- brewer.pal(nclr, "PuBu") # get the colors
 colornum <- cut(rank(plotvar), nclr, labels=FALSE)
@@ -395,7 +395,6 @@ PriceGroup6 = PriceBinGrouping(log10(2e6),log10(999e6))
 # MapPriceGroups(PriceGroup4,"orange")
 # MapPriceGroups(PriceGroup5,"#0B5345")
 # MapPriceGroups(PriceGroup6,"red")
-
 
 #SQFT_LIVING_15 (cor=0.61935746)
 plot(price~sqft_living15)
@@ -749,11 +748,11 @@ pred7<-predict(model7, newdata=val_set_X)
 RMSE(10^pred7, 10^val_set_y)
 R2(10^pred7, 10^val_set_y)
 
-set.seed(29)
 
 #Splitting the whole dataset into training and test set
 #Define training indexes
-idx.train<-createDataPartition(kc_house$price, p=.80, list=FALSE)
+set.seed(29)
+idx.train<-createDataPartition(kc_house$price, p=.80, list=F)
 #Define train and test subsets
 train<-kc_house[idx.train,]
 test<-kc_house[-idx.train,]
@@ -775,6 +774,7 @@ cv.rmse<-matrix(nrow=k, ncol=length(m))
 # Define a matrix with k rows and p columns for R^2
 cv.rsquared<-matrix(nrow=k, ncol=length(m))
 #Split train data in K-fold split
+set.seed(30)
 folds<-createFolds(train$price, k=k, list=FALSE, returnTrain=FALSE)
 #Loop through every fold
 for (i in 1:k) {
@@ -786,6 +786,8 @@ for (i in 1:k) {
     cv.valid<-train[idx.valid,]
     #Get training set, without validation set
     cv.train<-train[-idx.valid,]
+    # Set the seed for model initialization
+    set_seed(-1)
     #Train the model using training set
     model<-update(m[[j]], data=cv.train)
     #Predict values using validation set (without price column)
@@ -795,6 +797,21 @@ for (i in 1:k) {
     cv.rsquared[i,j]<-R2(10^cv.predicted, 10^cv.valid[19])
   }
 }
+
+# Plot the RMSE at every iteration
+plot(cv.rmse[,1], type="l", col="red", ylim=c(0, 1400000)) # 1st model
+lines(cv.rmse[,2], col="blue") #2nd model
+lines(cv.rmse[,3], col="yellow") # 3rd mode
+lines(cv.rmse[,4], col="orange") # 4th model
+lines(cv.rmse[,5], col="purple") # 5th model
+
+# Plot the R2 at every iteration
+plot(cv.rsquared[,1], type="l", col="red", ylim=c(0.3,1)) # 1st model
+lines(cv.rsquared[,2], col="blue") #2nd model
+lines(cv.rsquared[,3], col="yellow") # 3rd mode
+lines(cv.rsquared[,4], col="orange") # 4th model
+lines(cv.rsquared[,5], col="purple") # 5th model
+
 #Initialize mean values for prediction scores
 cv.mean.rmse<-c()
 cv.mean.rsquared<-c()
@@ -806,13 +823,4 @@ for (j in 1:length(m)) {
 # Show averaged results
 cv.mean.rmse
 cv.mean.rsquared
-# The best model is the 4-th, by looking at rmse and r-squared
-# Hence, we retrain the best model on the whole dataset
-#model <- lm(data=train, formula=as.formula(formula.4))
-#summary(model)
-# Test the best model on the test set
-#predicted <- predict(model, newdata=test[-19])
-# Compute scores on test set
-#RMSE(predicted, test[19])
-#R2(predicted, test[19])
 

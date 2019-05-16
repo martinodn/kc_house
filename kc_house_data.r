@@ -929,7 +929,6 @@ pred7<-predict(model7, newdata=val_set_X)
 RMSE(10^pred7, 10^val_set_y)
 R2(10^pred7, 10^val_set_y)
 
-
 #Splitting the whole dataset into training and test set
 #Define training indexes
 set.seed(29)
@@ -967,15 +966,13 @@ for (i in 1:k) {
     cv.valid<-train[idx.valid,]
     #Get training set, without validation set
     cv.train<-train[-idx.valid,]
-    # Set the seed for model initialization
-    set.seed(29)
     #Train the model using training set
     model<-update(m[[j]], data=cv.train)
     #Predict values using validation set (without price column)
-    cv.predicted<-predict(model, newdata=cv.valid[-19])
+    cv.predicted<-predict(model, newdata=cv.valid[,-19])
     #Add prediction scores to the matrices
-    cv.rmse[i,j]<-RMSE(10^cv.predicted, 10^cv.valid[19])
-    cv.rsquared[i,j]<-R2(10^cv.predicted, 10^cv.valid[19])
+    cv.rmse[i,j]<-RMSE(10^cv.predicted, 10^cv.valid[,19])
+    cv.rsquared[i,j]<-R2(10^cv.predicted, 10^cv.valid[,19])
   }
 }
 
@@ -986,8 +983,6 @@ lines(cv.rmse[,2], col="blue") #2nd model
 lines(cv.rmse[,3], col="yellow") # 3rd mode
 lines(cv.rmse[,4], col="orange") # 4th model
 lines(cv.rmse[,5], col="purple") # 5th model
-#add legend
-
 
 # Plot the R2 at every iteration
 plot(cv.rsquared[,1], type="l", col="red", ylim=c(0.3,1)) # 1st model
@@ -995,8 +990,6 @@ lines(cv.rsquared[,2], col="blue") #2nd model
 lines(cv.rsquared[,3], col="yellow") # 3rd mode
 lines(cv.rsquared[,4], col="orange") # 4th model
 lines(cv.rsquared[,5], col="purple") # 5th model
-#add legend
-
 
 #Initialize mean values for prediction scores
 cv.mean.rmse<-c()

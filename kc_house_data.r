@@ -396,6 +396,21 @@ PriceGroup6 = PriceBinGrouping(log10(2e6),log10(999e6))
 # MapPriceGroups(PriceGroup5,"#0B5345")
 # MapPriceGroups(PriceGroup6,"red")
 
+
+#ZIPCODE in function of latitude and longitude
+#Not that zipcode is an integer value, but is referred to a discrete variable
+#First we are interested to know how many zipcodes are there
+length(unique(zipcode)) # There are 70 zipcodes
+# Define a plot coloured with respect to zipcode
+library(randomcoloR)
+set.seed(3)
+palette <- randomColor(length(unique(zipcode)))
+plt <- ggplot(kc_house, aes(x=long, y=lat, col=as.factor(zipcode)) ) 
+plt <- plt + geom_point()
+plt <- plt + theme(legend.position='none')
+plt <- plt + scale_colour_manual(values=palette)
+plt
+
 #SQFT_LIVING_15 (cor=0.61935746)
 plot(price~sqft_living15)
 average_price_l15 <-aggregate(price~sqft_living15, FUN=mean, data=kc_house)
@@ -419,8 +434,6 @@ cor(kc_house)
 #Define the random seed (otherwise we cannot repeat exactly the same experiment)
 set.seed(29)
 #try to evaluate performance of different models splitting the whole set into training-validation-test set
-
-
 id.train<-createDataPartition(price, p=.80, list=FALSE)
 train_set<-kc_house[id.train,] #80
 test_set<-kc_house[-id.train,] #20
@@ -741,8 +754,26 @@ PlotImportance(importance2)
 ##############################################THE UNTOUCHABLE ZONE!!!! ALERT!!!!! DANGER!!!!
 
 # Try model with interactions between positional variables
-model7  <- lm(price ~ lat*long*zipcode - lat:long:zipcode, data=train_set)
-cvrusummary(model7)
+model7 <- lm(price ~ lat*zipcode + long*zipcode
+             + yr_built*yr_last_renovation*condition
+             + sqft_lot*sqft_lot15
+             + grade*bedrooms*bathrooms,
+             data=train_set)
+summary(model7)
+# Try predictions over validation dataset
+pred7<-predict(model7, newdata=val_set_X)
+RMSE(10^pred7, 10^val_set_y)
+R2(10^pred7, 10^val_set_y)
+model7 <- lm(price ~ . 
+            + lat*zipcode + long*zipcode
+            + yr_built*yr_last_renovation*condition
+            + sqft_lot*sqft_lot15
+            + grade*bedrooms*bathrooms
+            -bathrooms:grade
+            -floors
+            -sqft_above,
+            data=train_set)
+summary(model7)
 # Try predictions over validation dataset
 pred7<-predict(model7, newdata=val_set_X)
 RMSE(10^pred7, 10^val_set_y)
@@ -787,7 +818,7 @@ for (i in 1:k) {
     #Get training set, without validation set
     cv.train<-train[-idx.valid,]
     # Set the seed for model initialization
-    set_seed(-1)
+    set.seed(29)
     #Train the model using training set
     model<-update(m[[j]], data=cv.train)
     #Predict values using validation set (without price column)

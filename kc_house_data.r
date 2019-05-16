@@ -1,5 +1,12 @@
 kc_house<-read.csv("kc_house_data.csv")
 
+# Define seed
+my_seed <- 30
+# Define function for atomatically setting the seed
+set_seed <- function(add=0) {
+  set.seed(my_seed + add)
+}
+
 #TODO: dove abbiamo preso i dati, spiegare ogni colonna cosa significa
 
 #check the dimension of the dataset
@@ -158,7 +165,7 @@ map.kc
 library(scatterplot3d)
 library(RColorBrewer)
 # Get colors for labeling the points
-plotvar <- price # pick a variable to plot
+plotvar <- house$price # pick a variable to plot
 nclr <- 8 # number of colors
 plotclr <- brewer.pal(nclr, "PuBu") # get the colors
 colornum <- cut(rank(plotvar), nclr, labels=FALSE)
@@ -350,6 +357,19 @@ plot(average_price_long, col=1,main="Average price by long")
 lines(loess.smooth(long, price), col=5)
 #not so significant the long
 
+#ZIPCODE in function of latitude and longitude
+#Not that zipcode is an integer value, but is referred to a discrete variable
+#First we are interested to know how many zipcodes are there
+length(unique(zipcode)) # There are 70 zipcodes
+plotvar <- zipcode - min(zipcode) # Pick a variable to plot
+nclr <- 8 # Number of colors
+plotclr <- brewer.pal(nclr, "PuBu") # Get the color palette
+colornum <- cut(rank(plotvar), nclr, labels=FALSE)
+colcode <- plotclr[colornum] # Assign a color
+plot.angle <- 45
+# 3D Scatter plot
+scatterplot3d(long, lat, plotvar, type='h', angle=plot.angle, color=colcode, pch=20, cex.symbols=2, 
+              col.axis="gray", col.grid="gray", xlab="Longitude", ylab="Latitude", zlab="Zipcode")
 
 #SQFT_LIVING_15 (cor=0.61935746)
 plot(price~sqft_living15)
@@ -561,11 +581,10 @@ pred6<-predict(model6, newdata=val_set_X)
 RMSE(10^pred6, 10^val_set_y)
 R2(10^pred6, 10^val_set_y)
 
-set.seed(42)
-
 #Splitting the whole dataset into training and test set
 #Define training indexes
-idx.train<-createDataPartition(kc_house$price, p=.80, list=FALSE)
+set_seed()
+idx.train<-createDataPartition(kc_house$price, p=.80, list=F)
 #Define train and test subsets
 train<-kc_house[idx.train,]
 test<-kc_house[-idx.train,]
@@ -587,6 +606,7 @@ cv.rmse<-matrix(nrow=k, ncol=length(m))
 # Define a matrix with k rows and p columns for R^2
 cv.rsquared<-matrix(nrow=k, ncol=length(m))
 #Split train data in K-fold split
+set_seed(10)
 folds<-createFolds(train$price, k=k, list=FALSE, returnTrain=FALSE)
 #Loop through every fold
 for (i in 1:k) {
@@ -598,6 +618,8 @@ for (i in 1:k) {
     cv.valid<-train[idx.valid,]
     #Get training set, without validation set
     cv.train<-train[-idx.valid,]
+    # Set the seed for model initialization
+    set_seed(-1)
     #Train the model using training set
     model<-update(m[[j]], data=cv.train)
     #Predict values using validation set (without price column)
@@ -607,6 +629,21 @@ for (i in 1:k) {
     cv.rsquared[i,j]<-R2(10^cv.predicted, 10^cv.valid[19])
   }
 }
+
+# Plot the RMSE at every iteration
+plot(cv.rmse[,1], type="l", col="red", ylim=c(0, 1400000)) # 1st model
+lines(cv.rmse[,2], col="blue") #2nd model
+lines(cv.rmse[,3], col="yellow") # 3rd mode
+lines(cv.rmse[,4], col="orange") # 4th model
+lines(cv.rmse[,5], col="purple") # 5th model
+
+# Plot the R2 at every iteration
+plot(cv.rsquared[,1], type="l", col="red", ylim=c(0.3,1)) # 1st model
+lines(cv.rsquared[,2], col="blue") #2nd model
+lines(cv.rsquared[,3], col="yellow") # 3rd mode
+lines(cv.rsquared[,4], col="orange") # 4th model
+lines(cv.rsquared[,5], col="purple") # 5th model
+
 #Initialize mean values for prediction scores
 cv.mean.rmse<-c()
 cv.mean.rsquared<-c()
@@ -618,6 +655,23 @@ for (j in 1:length(m)) {
 # Show averaged results
 cv.mean.rmse
 cv.mean.rsquared
+
+# Get 10-th validation fold
+idx.valid_10 <- idx.valid<-which(folds==10, arr.ind=TRUE)
+valid_10 <- train[idx.valid_10,]
+train_10 <- train[-idx.valid_10,]
+# Train 5th model on 10th fold
+model5_10 <- update(model5, data=train_10)
+# Using summary, we note that I(lat^4) is NA
+summary(model5_10)
+# Correct the model
+model5_10 <- update(model5_10, . ~ . -I(lat^4))
+summary(model5_10)
+# Compute predictions
+pred_10 <- predict(model5_10,  newdata=valid_10[-19])
+# Compute scores
+RMSE(10^pred_10, 10^valid_10[19])
+R2(10^pred_10, 10^valid_10[19])
 # The best model is the 4-th, by looking at rmse and r-squared
 # Hence, we retrain the best model on the whole dataset
 #model <- lm(data=train, formula=as.formula(formula.4))

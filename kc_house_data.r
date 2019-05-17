@@ -8,6 +8,7 @@ library(caret)
 library(corrplot)
 library(ggplot2)
 library(ggmap)
+library(randomcoloR)
 library(scatterplot3d)
 library(RColorBrewer)
 
@@ -15,6 +16,13 @@ fillColor = "#FFA07A"
 fillColor2 = "#F1C40F"
 
 kc_house<-read.csv("kc_house_data.csv")
+
+# Define seed
+my_seed <- 30
+# Define function for atomatically setting the seed
+set_seed <- function(add=0) {
+  set.seed(my_seed + add)
+}
 
 #TODO: dove abbiamo preso i dati, spiegare ogni colonna cosa significa
 
@@ -388,21 +396,11 @@ PriceGroup4 = PriceBinGrouping(log10(750e3),log10(1e6))
 PriceGroup5 = PriceBinGrouping(log10(1e6),log10(2e6))
 PriceGroup6 = PriceBinGrouping(log10(2e6),log10(999e6))
 
-#to show the houses of that group, do for example:
-# MapPriceGroups(PriceGroup1,"black")
-# MapPriceGroups(PriceGroup2,"blue")
-# MapPriceGroups(PriceGroup3,"yellow")
-# MapPriceGroups(PriceGroup4,"orange")
-# MapPriceGroups(PriceGroup5,"#0B5345")
-# MapPriceGroups(PriceGroup6,"red")
-
-
 #ZIPCODE in function of latitude and longitude
 #Not that zipcode is an integer value, but is referred to a discrete variable
 #First we are interested to know how many zipcodes are there
 length(unique(zipcode)) # There are 70 zipcodes
 # Define a plot coloured with respect to zipcode
-library(randomcoloR)
 set.seed(3)
 palette <- randomColor(length(unique(zipcode)))
 plt <- ggplot(kc_house, aes(x=long, y=lat, col=as.factor(zipcode)) ) 
@@ -779,7 +777,6 @@ pred7<-predict(model7, newdata=val_set_X)
 RMSE(10^pred7, 10^val_set_y)
 R2(10^pred7, 10^val_set_y)
 
-
 #Splitting the whole dataset into training and test set
 #Define training indexes
 set.seed(29)
@@ -799,7 +796,7 @@ summary(test$price)
 #Define k for k-fold cross-validation
 k<-10
 #Define an array of formula, to be used in model training
-m<-list(model1, model2, model3, model4, model5)
+m<-list(model1, model2, model3, model4, model5, model6, model7)
 # Define a matrix with k rows and p columns for RMSE
 cv.rmse<-matrix(nrow=k, ncol=length(m))
 # Define a matrix with k rows and p columns for R^2

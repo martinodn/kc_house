@@ -212,8 +212,13 @@ hist(kc_house$sqft_lot, breaks=50, main = "Histogram of dimensions of lots")
 kc_house[19]<-log10(kc_house[19])
 dim(kc_house)
 length(kc_house$yr_last_renovation)
+# kc_house<-kc_house[kc_house$price < log10(1000000),]
+dim(kc_house)
 
+
+max(kc_house$price)
 attach(kc_house)
+
 # length(yr_last_renovation)
 # dim(kc_house)
 
@@ -336,7 +341,8 @@ boxplot(price~grade, xlab="grade", main="Price by grade")
 
 kc_house %>%
   group_by(grade) %>%
-  summarise(PriceMedian = median(10**(price), na.rm = TRUE)) %>%
+  # summarise(PriceMedian = median(10**(price)), na.rm = TRUE) %>%
+  summarise(PriceMedian = round(median(10**(price),2)), na.rm = TRUE) %>%
   ungroup() %>%
   mutate(grade = reorder(grade,PriceMedian)) %>%
   arrange(desc(PriceMedian)) %>%
@@ -440,13 +446,24 @@ PriceGroup4 = PriceBinGrouping(log10(750e3),log10(1e6))
 PriceGroup5 = PriceBinGrouping(log10(1e6),log10(2e6))
 PriceGroup6 = PriceBinGrouping(log10(2e6),log10(999e6))
 
+MapPriceGroups = function(PriceGroupName,color)
+{
+  center_lon = median(PriceGroupName$long,na.rm = TRUE)
+  center_lat = median(PriceGroupName$lat,na.rm = TRUE)
+  
+  leaflet(PriceGroup2) %>% addProviderTiles("Esri.NatGeoWorldMap") %>%
+    addCircles(lng = ~long, lat = ~lat, 
+               color = ~c(color))  %>%
+    # controls
+    setView(lng=center_lon, lat=center_lat,zoom = 12)
+}
 #to show the houses of that group, do for example:
-# MapPriceGroups(PriceGroup1,"black")
-# MapPriceGroups(PriceGroup2,"blue")
-# MapPriceGroups(PriceGroup3,"yellow")
-# MapPriceGroups(PriceGroup4,"orange")
-# MapPriceGroups(PriceGroup5,"#0B5345")
-# MapPriceGroups(PriceGroup6,"red")
+MapPriceGroups(PriceGroup1,"black")
+MapPriceGroups(PriceGroup2,"blue")
+MapPriceGroups(PriceGroup3,"yellow")
+MapPriceGroups(PriceGroup4,"orange")
+MapPriceGroups(PriceGroup5,"#0B5345")
+MapPriceGroups(PriceGroup6,"red")
 
 
 #ZIPCODE in function of latitude and longitude
@@ -514,7 +531,7 @@ pred1<-predict(model1, newdata=val_set_X)
 postResample(10**(pred1), 10**(val_set_y))
 r1<-RMSE(10**(pred1), 10**(val_set_y))
 RMSE_values=c(RMSE_values,r1)
-
+dim(kc_house)
 # plot(model1)
 
 #we don't want to cut off the intercept, so we keep it!
@@ -765,6 +782,7 @@ KCHouseDataModel4 = train(formula4, data = train_set,
                          method = "lm",trControl = fitControl4,metric="RMSE")
 
 KCHouseDataModel4
+
 importance4 = varImp(KCHouseDataModel4)
 
 formula6<-price~poly(date,6)+
@@ -789,10 +807,10 @@ fitControl6 <- trainControl(method="cv",number = 10)
 KCHouseDataModel6 = train(formula6, data = train_set, method = "lm",trControl = fitControl6,metric="RMSE")
 importance6<- varImp(KCHouseDataModel6)
 
-
-row.names(importance6[[1]])
-importance6[[1]]
-typeof(importance6[[1]])
+# 
+# row.names(importance6[[1]])
+# importance6[[1]]
+# typeof(importance6[[1]])
 PlotImportance = function(importance)
 {
   varImportance <- data.frame(Variables = row.names(importance[[1]]), 
@@ -961,12 +979,15 @@ for (i in 1:k) {
   }
 }
 
+par(mfrow=c(1,1))
 # Plot the RMSE at every iteration
 plot(cv.rmse[,1], type="l", col="red", ylim=c(0, 1400000)) # 1st model
 lines(cv.rmse[,2], col="blue") #2nd model
 lines(cv.rmse[,3], col="yellow") # 3rd mode
 lines(cv.rmse[,4], col="orange") # 4th model
 lines(cv.rmse[,5], col="purple") # 5th model
+#add legend
+
 
 # Plot the R2 at every iteration
 plot(cv.rsquared[,1], type="l", col="red", ylim=c(0.3,1)) # 1st model
@@ -974,6 +995,8 @@ lines(cv.rsquared[,2], col="blue") #2nd model
 lines(cv.rsquared[,3], col="yellow") # 3rd mode
 lines(cv.rsquared[,4], col="orange") # 4th model
 lines(cv.rsquared[,5], col="purple") # 5th model
+#add legend
+
 
 #Initialize mean values for prediction scores
 cv.mean.rmse<-c()

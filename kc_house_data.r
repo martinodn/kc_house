@@ -12,7 +12,8 @@ library(randomcoloR)
 library(scatterplot3d)
 library(RColorBrewer)
 library(leaps)
-library(tree)
+library(rpart)
+library(rpart.plot)
 
 fillColor = "#FFA07A"
 fillColor2 = "#F1C40F"
@@ -723,8 +724,6 @@ plot(RMSE_values)
 #previously unseen data is worse, so this can be due to overfitting of the training set.
 
 
-
-
 corrplot(cor(kc_house))
 palette = colorRampPalette(c("green", "white", "red")) (20)
 heatmap(x = cor(kc_house), col = palette, symm = TRUE)
@@ -861,34 +860,6 @@ set.seed(13)
 
 
 PlotImportance(importance)
-# 
-# PCAData = kc_house %>%
-#   select(lat,long)
-# 
-# pca = prcomp(PCAData, scale. = T)
-# 
-# KCHouseData_pca <- predict(pca, newdata = PCAData)
-# 
-# KCHouseData_pca = as.data.frame(KCHouseData_pca)
-# 
-# KCHouseData2 = cbind(KCHouseData2,KCHouseData_pca)
-# 
-# dim(KCHouseData2)
-# kc_house %>% 
-#   filter(!is.na(lat)) %>% 
-#   filter(!is.na(long)) %>% 
-#   
-#   ggplot(aes(x=lat,y=long))+
-#   geom_point(color = "blue")+
-#   
-#   theme_bw()+
-#   theme(axis.title = element_text(size=16),axis.text = element_text(size=14))+
-#   xlab("Latitude")+
-#   ylab("Longitude")
-# 
-# pca = prcomp(PCAData, scale. = T)
-# 
-# biplot (pca , scale =0)
 
 formula<-price~ .
 
@@ -909,12 +880,9 @@ importance = varImp(t)
 
 PlotImportance(importance)
 
-
-
-##############ANALYSIS WITHOUT OUTLIERS maderfuckerzzz
+##############ANALYSIS WITHOUT OUTLIERS maderfuckerzzz?
 par(mfrow=c(1,1))
-library(rpart)
-library(rpart.plot)
+
 fit <- rpart(price~., data = train_set)
 rpart.plot(fit, type=2, roundint = FALSE, digits = 3)
 

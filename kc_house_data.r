@@ -807,6 +807,20 @@ fitControl6 <- trainControl(method="cv",number = 10)
 KCHouseDataModel6 = train(formula6, data = train_set, method = "lm",trControl = fitControl6,metric="RMSE")
 importance6<- varImp(KCHouseDataModel6)
 
+library(randomForest)
+# ensure the results are repeatable
+set.seed(7)
+# define the control using a random forest selection function
+control6 <- rfeControl(functions=rfFuncs, method="cv", number=10)
+# run the RFE algorithm
+results <- rfe(train_set[,-19], train_set[,19], sizes=c(1:19), rfeControl=control6)
+# summarize the results
+print(results)
+# list the chosen features
+predictors(results)
+# plot the results
+plot(results, type=c("g", "o"))
+
 # 
 # row.names(importance6[[1]])
 # importance6[[1]]

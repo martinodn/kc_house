@@ -8,8 +8,12 @@ library(caret)
 library(corrplot)
 library(ggplot2)
 library(ggmap)
+library(randomcoloR)
 library(scatterplot3d)
 library(RColorBrewer)
+library(leaps)
+library(rpart)
+library(rpart.plot)
 
 fillColor = "#FFA07A"
 fillColor2 = "#F1C40F"
@@ -202,7 +206,7 @@ any(sqft_diff!=0)
 #we delete the column sqft_basement because it add no infos and it can be add in future if we want (lossless delete)
 kc_house<-kc_house[,-12]
 
-hist(sqft_lot)
+hist(kc_house$sqft_lot)
 #we can see that this feature has a really bad distribution, so we can try applying the log10 to it.
 kc_house[5]<-log10(kc_house$sqft_lot)
 kc_house[18]<-log10(kc_house$sqft_lot15)
@@ -465,13 +469,11 @@ MapPriceGroups(PriceGroup4,"orange")
 MapPriceGroups(PriceGroup5,"#0B5345")
 MapPriceGroups(PriceGroup6,"red")
 
-
 #ZIPCODE in function of latitude and longitude
 #Not that zipcode is an integer value, but is referred to a discrete variable
 #First we are interested to know how many zipcodes are there
 length(unique(zipcode)) # There are 70 zipcodes
 # Define a plot coloured with respect to zipcode
-library(randomcoloR)
 set.seed(3)
 palette <- randomColor(length(unique(zipcode)))
 plt <- ggplot(kc_house, aes(x=long, y=lat, col=as.factor(zipcode)) ) 
@@ -507,6 +509,7 @@ id.train<-createDataPartition(price, p=.80, list=FALSE)
 train_set<-kc_house[id.train,] #80
 test_set<-kc_house[-id.train,] #20
 
+set.seed(29)
 id.val<-createDataPartition(train_set$price, p=.15, list=FALSE)
 
 # id.test<-createDataPartition(price, p=.20, list=FALSE)
@@ -721,8 +724,6 @@ plot(RMSE_values)
 #previously unseen data is worse, so this can be due to overfitting of the training set.
 
 
-
-
 corrplot(cor(kc_house))
 palette = colorRampPalette(c("green", "white", "red")) (20)
 heatmap(x = cor(kc_house), col = palette, symm = TRUE)
@@ -852,41 +853,27 @@ PlotImportance(importance2)
 PlotImportance(importance4)
 # PlotImportance(importance6)
 
+set.seed(10)
 
+ctrl <- rfeControl(functions = lmFuncs,
+                   method = "repeatedcv",
+                   repeats = 15,
+                   verbose = FALSE)
+
+lmProfile <- rfe(train_set[,-19], train_set[,19],
+                 sizes = c(18:1),
+                 rfeControl = ctrl)
+
+lmProfile
+lmProfile$bestSubset
+
+lmProfile$variables
 KCHouseData2 = kc_house %>%
   select(-date)
 set.seed(13)
 
 
 PlotImportance(importance)
-# 
-# PCAData = kc_house %>%
-#   select(lat,long)
-# 
-# pca = prcomp(PCAData, scale. = T)
-# 
-# KCHouseData_pca <- predict(pca, newdata = PCAData)
-# 
-# KCHouseData_pca = as.data.frame(KCHouseData_pca)
-# 
-# KCHouseData2 = cbind(KCHouseData2,KCHouseData_pca)
-# 
-# dim(KCHouseData2)
-# kc_house %>% 
-#   filter(!is.na(lat)) %>% 
-#   filter(!is.na(long)) %>% 
-#   
-#   ggplot(aes(x=lat,y=long))+
-#   geom_point(color = "blue")+
-#   
-#   theme_bw()+
-#   theme(axis.title = element_text(size=16),axis.text = element_text(size=14))+
-#   xlab("Latitude")+
-#   ylab("Longitude")
-# 
-# pca = prcomp(PCAData, scale. = T)
-# 
-# biplot (pca , scale =0)
 
 formula<-price~ .
 
@@ -903,46 +890,99 @@ t = train(formula, data = train_set,
                             method = "xgbTree",trControl = fitControl,
                             tuneGrid = xgbGrid,na.action = na.pass,metric="RMSE")
 
-importance = varImp(KCHouseDataModelXGB)
+importance = varImp(t)
 
+PlotImportance(importance)
 
+##############ANALYSIS WITHOUT OUTLIERS maderfuckerzzz?
+par(mfrow=c(1,1))
 
-##############ANALYSIS WITHOUT OUTLIERS maderfuckerzzz
+fit <- rpart(price~., data = train_set)
+rpart.plot(fit, type=2, roundint = FALSE, digits = 3)
 
-
-
-
-
-
-
+min(kc_house$price)
+max(kc_house$price)
+mean(kc_house$price)
 ##############################################THE UNTOUCHABLE ZONE!!!! ALERT!!!!! DANGER!!!!
 
-# Try model with interactions between positional variables
-model7 <- lm(price ~ lat*zipcode + long*zipcode
-             + yr_built*yr_last_renovation*condition
-             + sqft_lot*sqft_lot15
-             + grade*bedrooms*bathrooms,
-             data=train_set)
+# Plot of explanatory values wrt price in form of a Tree in order to extract most important interactions
+# model <- tree(price~., data=kc_house)
+# plot(model) 
+# text(model)
+# Most explanatory variable is grade, followed by sqft_living and latitude
+# Hence we create a model conidering only first grade variables plus the interactions
+model7 <- lm(price ~ . + (grade + lat + sqft_living)^2, data=train_set)
 summary(model7)
-# Try predictions over validation dataset
-pred7<-predict(model7, newdata=val_set_X)
-RMSE(10^pred7, 10^val_set_y)
-R2(10^pred7, 10^val_set_y)
-model7 <- lm(price ~ . 
-            + lat*zipcode + long*zipcode
-            + yr_built*yr_last_renovation*condition
-            + sqft_lot*sqft_lot15
-            + grade*bedrooms*bathrooms
-            -bathrooms:grade
-            -floors
-            -sqft_above,
-            data=train_set)
+# We execute a proper backward selection, taking into account the p-vale
+model7 <- update(model7, . ~ . -sqft_lot -grade:lat -sqft_living:lat -sqft_above)
 summary(model7)
-# Try predictions over validation dataset
+# Validation
 pred7<-predict(model7, newdata=val_set_X)
-RMSE(10^pred7, 10^val_set_y)
-R2(10^pred7, 10^val_set_y)
+RMSE(10^pred7, 10^val_set_y) # 180381.8
+R2(10^pred7, 10^val_set_y) # 0.7668159
 
+# # Model 7: takes into account every interaction between variables
+# rhs <- paste(colnames(train)[-19], collapse=' + ')
+# rhs <- paste('(', rhs, ')^2', sep='')
+# lhs <- 'price ~'
+# formula7 <- as.formula(paste(lhs, rhs))
+# model7 <- lm(formula7, data=train)
+# summary(model7)
+# pred7<-predict(model7, newdata=val_set_X)
+# RMSE(10^pred7, 10^val_set_y)
+# R2(10^pred7, 10^val_set_y)
+# Execute automatic feature selection
+regfit.full <- regsubsets(formula7, method="backward", data=train, really.big=T)
+summary(regfit.full)
+
+reg.summary <- summary(regfit.full)
+
+# elements of reg.summary
+names(reg.summary)
+
+# R^2 statistic for the best model of every subset group
+reg.summary$rsq
+reg.summary$bic
+
+#
+# second group of plots
+#
+
+plot(regfit.full,scale="r2")
+plot(regfit.full,scale="adjr2")
+plot(regfit.full,scale="Cp")
+plot(regfit.full,scale="bic")
+
+# Cp best
+coef(regfit.full,8)
+
+# BIC best
+coef(regfit.full,4)
+
+#
+# first group of plots
+#
+par(mfrow=c(2,2))
+
+# panel 1
+plot(reg.summary$rss,xlab="Number of Variables",ylab="RSS",type="l")
+
+# panel 2
+plot(reg.summary$adjr2,xlab="Number of Variables",ylab="Adjusted RSq",type="l")
+which.max(reg.summary$adjr2)
+points(7,reg.summary$adjr2[7], col="red",cex=2,pch=20)
+
+# panel 3
+plot(reg.summary$cp,xlab="Number of Variables",ylab="Cp",type='l')
+which.min(reg.summary$cp)
+points(6,reg.summary$cp[6],col="red",cex=2,pch=20)
+
+# panel 4
+plot(reg.summary$bic,xlab="Number of Variables",ylab="BIC",type='l')
+which.min(reg.summary$bic)
+points(4,reg.summary$bic[4],col="red",cex=2,pch=20)
+
+par(mfrow=c(1,1))
 
 #Splitting the whole dataset into training and test set
 #Define training indexes
@@ -963,7 +1003,7 @@ summary(test$price)
 #Define k for k-fold cross-validation
 k<-10
 #Define an array of formula, to be used in model training
-m<-list(model1, model2, model3, model4, model5)
+m<-list(model1, model2, model3, model4, model5, model6, model7)
 # Define a matrix with k rows and p columns for RMSE
 cv.rmse<-matrix(nrow=k, ncol=length(m))
 # Define a matrix with k rows and p columns for R^2
@@ -981,27 +1021,25 @@ for (i in 1:k) {
     cv.valid<-train[idx.valid,]
     #Get training set, without validation set
     cv.train<-train[-idx.valid,]
-    # Set the seed for model initialization
-    set.seed(29)
     #Train the model using training set
     model<-update(m[[j]], data=cv.train)
     #Predict values using validation set (without price column)
-    cv.predicted<-predict(model, newdata=cv.valid[-19])
+    cv.predicted<-predict(model, newdata=cv.valid)
     #Add prediction scores to the matrices
-    cv.rmse[i,j]<-RMSE(10^cv.predicted, 10^cv.valid[19])
-    cv.rsquared[i,j]<-R2(10^cv.predicted, 10^cv.valid[19])
+    cv.rmse[i,j] <- RMSE(10^cv.predicted, 10^cv.valid[,19])
+    cv.rsquared[i,j] <- R2(10^cv.predicted, 10^cv.valid[,19])
   }
 }
 
 par(mfrow=c(1,1))
 # Plot the RMSE at every iteration
-plot(cv.rmse[,1], type="l", col="red", ylim=c(0, 1400000)) # 1st model
+plot(cv.rmse[,1], type="l", col="red", ylim=c(0, 800000)) # 1st model
 lines(cv.rmse[,2], col="blue") #2nd model
 lines(cv.rmse[,3], col="yellow") # 3rd mode
 lines(cv.rmse[,4], col="orange") # 4th model
 lines(cv.rmse[,5], col="purple") # 5th model
-#add legend
-
+lines(cv.rmse[,6], col="green") # 6th model
+lines(cv.rmse[,7], col="cyan") # 7th model
 
 # Plot the R2 at every iteration
 plot(cv.rsquared[,1], type="l", col="red", ylim=c(0.3,1)) # 1st model
@@ -1009,8 +1047,8 @@ lines(cv.rsquared[,2], col="blue") #2nd model
 lines(cv.rsquared[,3], col="yellow") # 3rd mode
 lines(cv.rsquared[,4], col="orange") # 4th model
 lines(cv.rsquared[,5], col="purple") # 5th model
-#add legend
-
+lines(cv.rsquared[,6], col="green") # 6th model
+lines(cv.rsquared[,7], col="cyan") # 7th model
 
 #Initialize mean values for prediction scores
 cv.mean.rmse<-c()

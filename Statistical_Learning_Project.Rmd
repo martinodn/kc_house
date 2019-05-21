@@ -1,0 +1,50 @@
+---
+title: "Statistical Learning Project"
+author: "Martino De Nardi, Damiano Clementel"
+date: "21/5/2019"
+output: pdf_document
+---
+
+
+##Introduction
+This project presents an analysis involving regression, one of the most important statistical methods that 
+
+## Dataset
+
+```{r, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(boot)
+library(stringr)
+library(lubridate)
+library(DT)
+library(leaflet)
+library(caret)
+library(corrplot)
+library(ggplot2)
+library(ggmap)
+library(randomcoloR)
+library(scatterplot3d)
+library(RColorBrewer)
+#library(leaps)
+library(rpart)
+library(rpart.plot)
+
+fillColor = "#FFA07A"
+fillColor2 = "#F1C40F"
+
+kc_house<-read.csv("kc_house_data.csv")
+```
+
+## Data cleaning and filtering
+
+## Data exploration
+
+## Data Modeling
+
+##Data Interpreting
+
+## Technical appendix
+
+
+
+

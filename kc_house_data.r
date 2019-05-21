@@ -474,7 +474,6 @@ MapPriceGroups(PriceGroup6,"red")
 #First we are interested to know how many zipcodes are there
 length(unique(zipcode)) # There are 70 zipcodes
 # Define a plot coloured with respect to zipcode
-library(randomcoloR)
 set.seed(3)
 palette <- randomColor(length(unique(zipcode)))
 plt <- ggplot(kc_house, aes(x=long, y=lat, col=as.factor(zipcode)) ) 
@@ -990,7 +989,7 @@ summary(test$price)
 #Define k for k-fold cross-validation
 k<-10
 #Define an array of formula, to be used in model training
-m<-list(model1, model2, model3, model4, model5)
+m<-list(model1, model2, model3, model4, model5, model6, model7)
 # Define a matrix with k rows and p columns for RMSE
 cv.rmse<-matrix(nrow=k, ncol=length(m))
 # Define a matrix with k rows and p columns for R^2

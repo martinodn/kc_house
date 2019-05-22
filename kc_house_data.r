@@ -12,7 +12,7 @@ library(randomcoloR)
 library(scatterplot3d)
 library(RColorBrewer)
 library(randomForest)
-# library(leaps)
+library(leaps)
 library(rpart)
 library(rpart.plot)
 
@@ -705,24 +705,291 @@ plot(RMSE_values)
 #we stop with the polynomial 5 because we see that the we have a lower adjusted R-squared and also the RMSE on the
 #previously unseen data is worse, so this can be due to overfitting of the training set.
 
+
+
+###########
+#automatic backward feature selection
+# regfit.back <- regsubsets(price~.,data=train_set, nvmax=18,method="backward")
+# summary(regfit.back)
+# reg.summary <- summary(regfit.back)
+# 
+# plot(reg.summary$rss,xlab="Number of Variables",ylab="RSS",type="l")
+# plot(reg.summary$adjr2,xlab="Number of Variables",ylab="Adjusted RSq",type="l")
+# which.max(reg.summary$adjr2)
+# points(18,reg.summary$adjr2[18], col="red",cex=2,pch=20)
+# plot(reg.summary$cp,xlab="Number of Variables",ylab="Cp",type='l')
+# plot(reg.summary$bic,xlab="Number of Variables",ylab="BIC",type='l')
+
+
+#we want to find the best model to predict, so first of all we find the best model for each
+#number of covariates, then we apply a 10-fold Cross Validation to see which of those
+#has the smaller error in the prediction
+
+set.seed(10)
+#set the indices
+train <- sample(1:dim(kc_house)[1], dim(kc_house)[1]*0.8)
+test <- setdiff(1:dim(kc_house)[1], train)
+
+max_var=18
+# for(i in c(1:400)){print(train[i]==test[i])}
+regfit.best <- regsubsets(price~ ., data=kc_house[train,],nvmax=max_var, method="backward")
+#summary(regfit.best)
+# model matrix construction 
+test.mat <- model.matrix(price~ .,data=kc_house[test,])
+test.mat
+colnames(test.mat)
+
+# RMSE on the test set
+val.errors=rep(NA,max_var)
+for(i in 1:max_var){
+  coefi <- coef(regfit.best,id=i)
+  pred <- test.mat[,names(coefi)]%*%coefi
+  val.errors[i] <- sqrt(mean((10**(kc_house$price[test])-10**(pred))^2))
+}
+
+val.errors
+best<-which.min(val.errors)
+
+coef(regfit.best, best)
+
+#select the best model with 13 predictors
+regfit.best <- regsubsets(price~ ., data=kc_house, nvmax=max_var)
+coef(regfit.best, best)
+
+# K-fold cross-validation
+predict.regsubsets <- function(object, newdata, id, ...){
+  form <- as.formula(object$call[[2]])
+  mat <- model.matrix(form, newdata)
+  coefi <- coef(object,id=id)
+  xvars <- names(coefi)
+  mat[,xvars]%*%coefi
+}
+
+k=10
+set.seed(1)
+folds <- sample(1:k, n, replace=TRUE)
+cv.errors <- matrix(NA, k, max_var, dimnames=list(NULL, paste(1:max_var)))
+
+for(j in 1:k){
+  best.fit <- regsubsets(price~ ., data=kc_house[folds!=j,], nvmax=max_var)
+  
+  for(i in 1:max_var){
+    pred <- predict(best.fit, kc_house[folds==j,], id=i)
+    cv.errors[j,i] <- sqrt(mean((10**(kc_house$price[folds==j])-10**(pred))^2))
+  }
+}
+
+mean.cv.errors <- apply(cv.errors, 2, mean)
+mean.cv.errors
+which.min(mean.cv.errors)
+
+mean.cv.errors[which.min(mean.cv.errors)]
+
+plot(mean.cv.errors, type="l")
+points(which.min(mean.cv.errors), mean.cv.errors[which.min(mean.cv.errors)])
+#######
+##########
+#BACKWARD FEATURE SELECTION
+#We try to find the best model for each grade of polynomial, according to AIC metric
+
+#grade 1
+full.mod <- lm(price~ ., data=train_set)
+step.mod <- step(full.mod, steps=100, k=log(n), trace=1, direction="backward")
+formula1<-step.mod$call$formula
+
+set.seed(17)
+glm.fit <- glm(formula1,data=kc_house)
+cv.error1 <- cv.glm(kc_house,glm.fit,K=10)$delta[1]
+cv.error1
+
+#the same result (formula) can be achieved by:
+ctrl <- rfeControl(functions = lmFuncs,
+                   method = "repeatedcv",
+                   repeats = 3,
+                   verbose = FALSE)
+
+lmProfile <- rfe(train_set[,-19], train_set[,19],
+                 sizes = c(18:1),
+                 rfeControl = ctrl)
+
+lmProfile
+lmProfile$optVariables
+
+#grade 2
+full.mod <- lm(price~date+I(date^2)+
+                 +bedrooms+I(bedrooms^2)+
+                 +bathrooms+I(bathrooms^2)
+                 +sqft_living+I(sqft_living^2)
+                 +sqft_lot+I(sqft_lot^2)
+               +floors+I(floors^2)
+               +waterfront
+               +view+I(view^2)
+               +condition+I(condition^2)
+               +grade+I(grade^2)
+               +sqft_above+I(sqft_above^2)
+               +yr_built+I(yr_built^2)
+               +yr_last_renovation+I(yr_last_renovation^2)
+               +zipcode+I(zipcode^2)
+               +lat+I(lat^2)
+               +long+I(long^2)
+               +sqft_living15+I(sqft_living15^2)
+               +sqft_lot15+I(sqft_lot15^2),data=train_set)
+step.mod <- step(full.mod, steps=100, k=log(n), trace=1, direction="backward")
+formula2<-step.mod$call$formula
+
+set.seed(17)
+glm.fit <- glm(formula2,data=kc_house)
+cv.error2 <- cv.glm(kc_house,glm.fit,K=10)$delta[1]
+cv.error2
+
+#grade 3
+full.mod <- lm(price~date+I(date^2)+I(date^3)+
+                 +bedrooms+I(bedrooms^2)+I(bedrooms^3)+
+                 +bathrooms+I(bathrooms^2)+I(bathrooms^3)
+               +sqft_living+I(sqft_living^2)+I(sqft_living^3)
+               +sqft_lot+I(sqft_lot^2)+I(sqft_lot^3)
+               +floors+I(floors^2)+I(floors^3)
+               +waterfront
+               +view+I(view^2)+I(view^3)
+               +condition+I(condition^2)+I(condition^3)
+               +grade+I(grade^2)+I(grade^3)
+               +sqft_above+I(sqft_above^2)+I(sqft_above^3)
+               +yr_built+I(yr_built^2)+I(yr_built^3)
+               +yr_last_renovation+I(yr_last_renovation^2)+I(yr_last_renovation^3)
+               +zipcode+I(zipcode^2)+I(zipcode^3)
+               +lat+I(lat^2)+I(lat^3)
+               +long+I(long^2)+I(long^3)
+               +sqft_living15+I(sqft_living15^2)+I(sqft_living15^3)
+               +sqft_lot15+I(sqft_lot15^2)+I(sqft_lot15^3),data=kc_house)
+step.mod <- step(full.mod, steps=100, k=log(n), trace=1, direction="backward")
+formula3<-step.mod$call$formula
+
+set.seed(17)
+glm.fit <- glm(formula3,data=kc_house)
+cv.error3 <- cv.glm(kc_house,glm.fit,K=10)$delta[1]
+cv.error3
+
+#grade 4
+
+
+#grade 5
+
+
+
+colnames(kc_house)
+step.mod$call
+library(boot)
+set.seed(17)
+cv.error.4 <- rep(0,4)
+for (i in 1:4){
+  glm.fit <- glm(price~ poly(date,i) + poly(bedrooms, i) + poly(bathrooms, i) + poly(sqft_living,i)+
+                   + poly(sqft_lot,i) + poly(floors,i)+ waterfront+ poly(view,i)+ 
+                   + poly(condition,i)+ poly(grade,i)+ poly(sqft_above,i)+
+                   + poly(yr_built,i)+ poly(yr_last_renovation,i)+ poly(zipcode,i)+ poly(lat,i)+
+                   + poly(long,i)+ poly(sqft_living15,i)+ poly(sqft_lot15,i)
+                 ,data=train_set)
+  cv.error.4[i] <- cv.glm(train_set, glm.fit, K=10)$delta[1]
+}
+cv.error.4
+
+regfit.fwd <- regsubsets(price~poly(date,2)+
+                           poly(bedrooms,2)+
+                           poly(bathrooms,2)+
+                           poly(sqft_living,2)+
+                           poly(sqft_lot,2)+
+                           poly(floors,2)+
+                           waterfront+
+                           poly(view,2)+
+                           poly(condition,2)+
+                           poly(grade,2)+
+                           poly(sqft_above,2)+
+                           poly(yr_built,2)+
+                           poly(yr_last_renovation,2)+
+                           poly(zipcode,2)+
+                           poly(lat,2)+
+                           poly(long,2)+
+                           poly(sqft_living15,2)+
+                           poly(sqft_lot15,2),data=kc_house, nvmax=18,method="forward")
+summary(regfit.fwd)
+
+reg.summary <- summary(regfit.fwd)
+
+#
+# first group of plots 
+#
+par(mfrow=c(2,2))
+
+# panel 1
+plot(reg.summary$rss,xlab="Number of Variables",ylab="RSS",type="l")
+
+# panel 2
+plot(reg.summary$adjr2,xlab="Number of Variables",ylab="Adjusted RSq",type="l")
+which.max(reg.summary$adjr2)
+points(which.max(reg.summary$adjr2),reg.summary$adjr2[which.max(reg.summary$adjr2)], col="red",cex=2,pch=20)
+
+# panel 3
+plot(reg.summary$cp,xlab="Number of Variables",ylab="Cp",type='l')
+which.min(reg.summary$cp)
+points(which.min(reg.summary$cp),reg.summary$cp[which.min(reg.summary$cp)],col="red",cex=2,pch=20)
+
+# panel 4
+plot(reg.summary$bic,xlab="Number of Variables",ylab="BIC",type='l')
+which.min(reg.summary$bic)
+points(which.min(reg.summary$bic),reg.summary$bic[which.min(reg.summary$bic)],col="red",cex=2,pch=20)
+
+
 ##############
 #CROSS VALIDATION
+# cv.err function 
+library(boot)
+set.seed(17)
+cv.error.4 <- rep(0,4)
+for (i in 1:4){
+  glm.fit <- glm(price~ poly(date,i) + poly(bedrooms, i) + poly(bathrooms, i) + poly(sqft_living,i)+
+                   + poly(sqft_lot,i) + poly(floors,i)+ waterfront+ poly(view,i)+ 
+                   + poly(condition,i)+ poly(grade,i)+ poly(sqft_above,i)+
+                   + poly(yr_built,i)+ poly(yr_last_renovation,i)+ poly(zipcode,i)+ poly(lat,i)+
+                   + poly(long,i)+ poly(sqft_living15,i)+ poly(sqft_lot15,i)
+                   ,data=train_set)
+  cv.error.4[i] <- cv.glm(train_set, glm.fit, K=10)$delta[1]
+}
+cv.error.4
 
-# define training control
-train_control <- trainControl(method="repeatedcv", number=10, repeats=3)
-# train the model
-model <- train(price~ ., data=train_set, trControl=train_control, method="lm")
-# summarize results
-print(model)
+library(boot)
+set.seed(17)
 
-# define training control
-train_control <- trainControl(method="repeatedcv", number=10, repeats=3)
-# train the model
-model <- train(price ~ . -sqft_above -sqft_lot, data=train_set, trControl=train_control, method="lm")
-# summarize results
-print(model)
+glm.fit <- glm(price~ I(date^4)
+               + I(bedrooms^3) 
+               + bathrooms  
+               + sqft_living + I(sqft_living^2) + I(sqft_living^3) + I(sqft_living^4) + I(sqft_living^5)
+               + I(sqft_lot^2) + I(sqft_lot^3) + I(sqft_lot^4) 
+               +  I(floors^2) + I(floors^3) 
+               + waterfront 
+               + view + I(view^2) + I(view^3) 
+               + I(condition^2) + I(condition^3)
+               + I(grade^2) + I(grade^3) 
+               + sqft_above + I(sqft_above^2)  + I(sqft_above^5)
+               + yr_built + I(yr_built^2) + I(yr_built^3)
+               + I(yr_last_renovation^2) + I(yr_last_renovation^3) 
+               + I(zipcode^2) 
+               + lat + I(lat^2) + I(lat^4) 
+               + long + I(long^2) 
+               + sqft_living15 + I(sqft_living15^2)
+               + sqft_lot15 + I(sqft_lot15^2) + I(sqft_lot15^3) + I(sqft_lot15^4)
+                 ,data=train_set)
+cv.error.4 <- cv.glm(train_set, glm.fit, K=20)$delta[1]
+cv.error.4
 
 
+
+
+# # define training control
+# train_control <- trainControl(method="repeatedcv", number=10, repeats=3)
+# # train the model
+# model <- train(price~ ., data=train_set, trControl=train_control, method="lm")
+# # summarize results
+# print(model)
+# 
 
 
 #Splitting the whole dataset into training and test set
@@ -949,17 +1216,6 @@ PlotImportance(importance4)
 
 set.seed(10)
 
-ctrl <- rfeControl(functions = lmFuncs,
-                   method = "repeatedcv",
-                   repeats = 15,
-                   verbose = FALSE)
-
-lmProfile <- rfe(train_set[,-19], train_set[,19],
-                 sizes = c(18:1),
-                 rfeControl = ctrl)
-
-lmProfile
-lmProfile$bestSubset
 
 lmProfile$variables
 # KCHouseData2 = kc_house %>%

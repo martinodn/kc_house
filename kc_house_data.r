@@ -487,7 +487,6 @@ lines(loess.smooth(sqft_lot15, price), col=5)
 cor(kc_house)
 
 
-
 #BACKWARD VARIABLE SELECTION
 
 #Define the random seed (otherwise we cannot repeat exactly the same experiment)
@@ -496,6 +495,11 @@ set.seed(29)
 id.train<-createDataPartition(price, p=.80, list=FALSE)
 train_set<-kc_house[id.train,] #80
 test_set<-kc_house[-id.train,] #20
+
+par(mfrow=c(1,2))
+boxplot(train_set$price, main="Train", ylim=c(4.5,7))
+boxplot(test_set$price, main="Test", ylim=c(4.5,7))
+par(mfrow=c(1,1))
 
 id.val<-createDataPartition(train_set$price, p=.15, list=FALSE)
 
@@ -645,7 +649,6 @@ RMSE_values=c(RMSE_values,r4)
 par(mfrow=c(2,2))
 plot(model4)
 
-
 par(mfrow=c(1,1))
 model5<-lm(price~ I(date^4)
            + I(bedrooms^3) 
@@ -669,8 +672,8 @@ model5<-lm(price~ I(date^4)
 
 summary(model5)
 pred5<-predict(model5, newdata=val_set_X)
-postResample(10**(pred5),10**(val_set_y))
-r5<-RMSE(10**(pred5),10**(val_set_y))
+postResample(pred5,val_set_y)
+r5<-RMSE(pred5,val_set_y)
 RMSE_values=c(RMSE_values,r5)
 
 
@@ -708,7 +711,7 @@ plot(RMSE_values)
 
 
 ###########
-#automatic backward feature selection
+# automatic backward feature selection
 # regfit.back <- regsubsets(price~.,data=train_set, nvmax=18,method="backward")
 # summary(regfit.back)
 # reg.summary <- summary(regfit.back)
@@ -725,26 +728,21 @@ plot(RMSE_values)
 #number of covariates, then we apply a 10-fold Cross Validation to see which of those
 #has the smaller error in the prediction
 
-set.seed(10)
-#set the indices
-train <- sample(1:dim(kc_house)[1], dim(kc_house)[1]*0.8)
-test <- setdiff(1:dim(kc_house)[1], train)
-
 max_var=18
 # for(i in c(1:400)){print(train[i]==test[i])}
 regfit.best <- regsubsets(price~ ., data=kc_house[train,],nvmax=max_var, method="backward")
-#summary(regfit.best)
+summary(regfit.best)
 # model matrix construction 
 test.mat <- model.matrix(price~ .,data=kc_house[test,])
 test.mat
-colnames(test.mat)
+# colnames(test.mat)
 
 # RMSE on the test set
 val.errors=rep(NA,max_var)
 for(i in 1:max_var){
   coefi <- coef(regfit.best,id=i)
   pred <- test.mat[,names(coefi)]%*%coefi
-  val.errors[i] <- sqrt(mean((10**(kc_house$price[test])-10**(pred))^2))
+  val.errors[i] <- sqrt(mean((kc_house$price[test]-pred)^2))
 }
 
 val.errors
@@ -788,52 +786,57 @@ mean.cv.errors[which.min(mean.cv.errors)]
 plot(mean.cv.errors, type="l")
 points(which.min(mean.cv.errors), mean.cv.errors[which.min(mean.cv.errors)])
 #######
-##########
-#BACKWARD FEATURE SELECTION
-#We try to find the best model for each grade of polynomial, according to AIC metric
 
-#grade 1
+##########
+# BACKWARD FEATURE SELECTION
+# We try to find the best model for each grade of polynomial, according to AIC metric
+
+# Set n as training set dimension
+n <- length(train_set[,19])
+
+# grade 1
 full.mod <- lm(price~ ., data=train_set)
 step.mod <- step(full.mod, steps=100, k=log(n), trace=1, direction="backward")
-formula1<-step.mod$call$formula
+formula1 <- step.mod$call$formula
 
 set.seed(17)
 glm.fit <- glm(formula1,data=kc_house)
 cv.error1 <- cv.glm(kc_house,glm.fit,K=10)$delta[1]
 cv.error1
-
-#the same result (formula) can be achieved by:
-ctrl <- rfeControl(functions = lmFuncs,
-                   method = "repeatedcv",
-                   repeats = 3,
-                   verbose = FALSE)
-
-lmProfile <- rfe(train_set[,-19], train_set[,19],
-                 sizes = c(18:1),
-                 rfeControl = ctrl)
-
-lmProfile
-lmProfile$optVariables
+# 
+# #the same result (formula) can be achieved by:
+# ctrl <- rfeControl(functions = lmFuncs,
+#                    method = "repeatedcv",
+#                    repeats = 3,
+#                    verbose = FALSE)
+# 
+# lmProfile <- rfe(train_set[,-19], train_set[,19],
+#                  sizes = c(18:1),
+#                  rfeControl = ctrl)
+# 
+# lmProfile
+# lmProfile$optVariables
 
 #grade 2
 full.mod <- lm(price~date+I(date^2)+
-                 +bedrooms+I(bedrooms^2)+
-                 +bathrooms+I(bathrooms^2)
-                 +sqft_living+I(sqft_living^2)
-                 +sqft_lot+I(sqft_lot^2)
-               +floors+I(floors^2)
-               +waterfront
-               +view+I(view^2)
-               +condition+I(condition^2)
-               +grade+I(grade^2)
-               +sqft_above+I(sqft_above^2)
-               +yr_built+I(yr_built^2)
-               +yr_last_renovation+I(yr_last_renovation^2)
-               +zipcode+I(zipcode^2)
-               +lat+I(lat^2)
-               +long+I(long^2)
-               +sqft_living15+I(sqft_living15^2)
-               +sqft_lot15+I(sqft_lot15^2),data=train_set)
+              +bedrooms+I(bedrooms^2)+
+              +bathrooms+I(bathrooms^2)
+              +sqft_living+I(sqft_living^2)
+              +sqft_lot+I(sqft_lot^2)
+              +floors+I(floors^2)
+              +waterfront
+              +view+I(view^2)
+              +condition+I(condition^2)
+              +grade+I(grade^2)
+              +sqft_above+I(sqft_above^2)
+              +yr_built+I(yr_built^2)
+              +yr_last_renovation+I(yr_last_renovation^2)
+              +zipcode+I(zipcode^2)
+              +lat+I(lat^2)
+              +long+I(long^2)
+              +sqft_living15+I(sqft_living15^2)
+              +sqft_lot15+I(sqft_lot15^2),
+              data=train_set)
 step.mod <- step(full.mod, steps=100, k=log(n), trace=1, direction="backward")
 formula2<-step.mod$call$formula
 
@@ -844,23 +847,24 @@ cv.error2
 
 #grade 3
 full.mod <- lm(price~date+I(date^2)+I(date^3)+
-                 +bedrooms+I(bedrooms^2)+I(bedrooms^3)+
-                 +bathrooms+I(bathrooms^2)+I(bathrooms^3)
-               +sqft_living+I(sqft_living^2)+I(sqft_living^3)
-               +sqft_lot+I(sqft_lot^2)+I(sqft_lot^3)
-               +floors+I(floors^2)+I(floors^3)
-               +waterfront
-               +view+I(view^2)+I(view^3)
-               +condition+I(condition^2)+I(condition^3)
-               +grade+I(grade^2)+I(grade^3)
-               +sqft_above+I(sqft_above^2)+I(sqft_above^3)
-               +yr_built+I(yr_built^2)+I(yr_built^3)
-               +yr_last_renovation+I(yr_last_renovation^2)+I(yr_last_renovation^3)
-               +zipcode+I(zipcode^2)+I(zipcode^3)
-               +lat+I(lat^2)+I(lat^3)
-               +long+I(long^2)+I(long^3)
-               +sqft_living15+I(sqft_living15^2)+I(sqft_living15^3)
-               +sqft_lot15+I(sqft_lot15^2)+I(sqft_lot15^3),data=kc_house)
+            +bedrooms+I(bedrooms^2)+I(bedrooms^3)+
+            +bathrooms+I(bathrooms^2)+I(bathrooms^3)
+            +sqft_living+I(sqft_living^2)+I(sqft_living^3)
+            +sqft_lot+I(sqft_lot^2)+I(sqft_lot^3)
+            +floors+I(floors^2)+I(floors^3)
+            +waterfront
+            +view+I(view^2)+I(view^3)
+            +condition+I(condition^2)+I(condition^3)
+            +grade+I(grade^2)+I(grade^3)
+            +sqft_above+I(sqft_above^2)+I(sqft_above^3)
+            +yr_built+I(yr_built^2)+I(yr_built^3)
+            +yr_last_renovation+I(yr_last_renovation^2)+I(yr_last_renovation^3)
+            +zipcode+I(zipcode^2)+I(zipcode^3)
+            +lat+I(lat^2)+I(lat^3)
+            +long+I(long^2)+I(long^3)
+            +sqft_living15+I(sqft_living15^2)+I(sqft_living15^3)
+            +sqft_lot15+I(sqft_lot15^2)+I(sqft_lot15^3),
+            data=kc_house)
 step.mod <- step(full.mod, steps=100, k=log(n), trace=1, direction="backward")
 formula3<-step.mod$call$formula
 
@@ -870,9 +874,63 @@ cv.error3 <- cv.glm(kc_house,glm.fit,K=10)$delta[1]
 cv.error3
 
 #grade 4
+full.mod <- lm(price~date+I(date^2)+I(date^3)+I(date^4)
+            +bedrooms+I(bedrooms^2)+I(bedrooms^3)+I(bedrooms^4)
+            +bathrooms+I(bathrooms^2)+I(bathrooms^3)+I(bathrooms^4)
+            +sqft_living+I(sqft_living^2)+I(sqft_living^3)+I(sqft_living^4)
+            +sqft_lot+I(sqft_lot^2)+I(sqft_lot^3)+I(sqft_lot^4)
+            +floors+I(floors^2)+I(floors^3)+I(floors^4)
+            +waterfront
+            +view+I(view^2)+I(view^3)+I(view^4)
+            +condition+I(condition^2)+I(condition^3)+I(condition^4)
+            +grade+I(grade^2)+I(grade^3)+I(grade^4)
+            +sqft_above+I(sqft_above^2)+I(sqft_above^3)+I(sqft_above^4)
+            +yr_built+I(yr_built^2)+I(yr_built^3)+I(yr_built^4)
+            +yr_last_renovation+I(yr_last_renovation^2)+I(yr_last_renovation^3)+I(yr_last_renovation^4)
+            +zipcode+I(zipcode^2)+I(zipcode^3)+I(zipcode^4)
+            +lat+I(lat^2)+I(lat^3)+I(lat^4)
+            +long+I(long^2)+I(long^3)+I(long^4)
+            +sqft_living15+I(sqft_living15^2)+I(sqft_living15^3)+I(sqft_living15^4)
+            +sqft_lot15+I(sqft_lot15^2)+I(sqft_lot15^3)+I(sqft_lot^4),
+            data=kc_house)
+step.mod <- step(full.mod, steps=100, k=log(n), trace=1, direction="backward")
+formula4 <- step.mod$call$formula
 
+set.seed(17)
+glm.fit <- glm(formula4, data=kc_house)
+cv.error4 <- cv.glm(kc_house, glm.fit, K=10)$delta[1]
+cv.error4
 
 #grade 5
+full.mod <- lm(price~date+I(date^2)+I(date^3)+I(date^4)+I(date^5)
+               +bedrooms+I(bedrooms^2)+I(bedrooms^3)+I(bedrooms^4)+I(bedrooms^5)
+               +bathrooms+I(bathrooms^2)+I(bathrooms^3)+I(bathrooms^4)+I(bathrooms^5)
+               +sqft_living+I(sqft_living^2)+I(sqft_living^3)+I(sqft_living^4)+I(sqft_living^5)
+               +sqft_lot+I(sqft_lot^2)+I(sqft_lot^3)+I(sqft_lot^4)+I(sqft_lot^5)
+               +floors+I(floors^2)+I(floors^3)+I(floors^4)+I(floors^5)
+               +waterfront
+               +view+I(view^2)+I(view^3)+I(view^4)+I(view^5)
+               +condition+I(condition^2)+I(condition^3)+I(condition^4)+I(condition^5)
+               +grade+I(grade^2)+I(grade^3)+I(grade^4)+I(grade^5)
+               +sqft_above+I(sqft_above^2)+I(sqft_above^3)+I(sqft_above^4)+I(sqft_above^5)
+               +yr_built+I(yr_built^2)+I(yr_built^3)+I(yr_built^4)+I(yr_built^5)
+               +yr_last_renovation+I(yr_last_renovation^2)+I(yr_last_renovation^3)+I(yr_last_renovation^4)+I(yr_last_renovation^5)
+               +zipcode+I(zipcode^2)+I(zipcode^3)+I(zipcode^4)+I(zipcode^5)
+               +lat+I(lat^2)+I(lat^3)+I(lat^4)+I(lat^5)
+               +long+I(long^2)+I(long^3)+I(long^4)+I(long^5)
+               +sqft_living15+I(sqft_living15^2)+I(sqft_living15^3)+I(sqft_living15^4)+I(sqft_living^5)
+               +sqft_lot15+I(sqft_lot15^2)+I(sqft_lot15^3)+I(sqft_lot^4)+I(sqft_lot^5),
+               data=kc_house)
+step.mod <- step(full.mod, steps=100, k=log(n), trace=1, direction="backward")
+formula5<-step.mod$call$formula
+
+set.seed(17)
+glm.fit <- glm(formula5, data=kc_house)
+cv.error5 <- cv.glm(kc_house, glm.fit, K=10)$delta[1]
+cv.error5
+
+cv.errors <- c(cv.error1, cv.error2, cv.error3, cv.error.4, cv.error5)
+plot(cv.errors)
 
 #VERY IMPORTANT! THIS COULD BE THE SOLUTION
 par(mfrow=c(1,1))
@@ -880,7 +938,8 @@ library(glmnet)
 fit = glmnet(as.matrix(train_set[,-19]), as.vector(train_set[,19]))
 plot(fit)
 
-cvfit = cv.glmnet(x, y)
+cvfit = cv.glmnet(as.matrix(train_set[,-19]), as.vector(train_set[,19]))
+plot(cvfit)
 
 fit$lambda
 fit$call
@@ -1005,23 +1064,23 @@ cv.error.4
 
 #Splitting the whole dataset into training and test set
 #Define training indexes
-set.seed(29)
-idx.train<-createDataPartition(kc_house$price, p=.80, list=F)
-#Define train and test subsets
-train<-kc_house[idx.train,]
-test<-kc_house[-idx.train,]
-#Check length of train and test set (percentage)
-dim(train)[1]/dim(kc_house)[1]
-dim(test)[1]/dim(kc_house)[1]
-#Check price values in train set
-summary(train$price)
-#Check price values in test set
-summary(test$price)
+# set.seed(29)
+# idx.train<-createDataPartition(kc_house$price, p=.80, list=F)
+# #Define train and test subsets
+# train<-kc_house[idx.train,]
+# test<-kc_house[-idx.train,]
+# #Check length of train and test set (percentage)
+# dim(train)[1]/dim(kc_house)[1]
+# dim(test)[1]/dim(kc_house)[1]
+# #Check price values in train set
+# summary(train$price)
+# #Check price values in test set
+# summary(test$price)
 
 
 #Cross-Validation (using previously splitted database)
 #Define k for k-fold cross-validation
-k<-20
+k<-5
 #Define an array of formula, to be used in model training
 m<-list(model1, model2, model3, model4, model5, model6)
 # Define a matrix with k rows and p columns for RMSE
@@ -1029,7 +1088,7 @@ cv.rmse<-matrix(nrow=k, ncol=length(m))
 # Define a matrix with k rows and p columns for R^2
 cv.rsquared<-matrix(nrow=k, ncol=length(m))
 #Split train data in K-fold split
-folds<-createFolds(train$price, k=k, list=FALSE, returnTrain=FALSE)
+folds<-createFolds(train_set[,19], k=k, list=FALSE, returnTrain=FALSE)
 #Loop through every fold
 for (i in 1:k) {
   #Get validation set for i-th iteration
@@ -1037,11 +1096,9 @@ for (i in 1:k) {
   #Loops through every grade of the polynomial specified
   for (j in 1:length(m)) {
     #Get validation set
-    cv.valid<-train[idx.valid,]
-    print(dim(cv.valid))
+    cv.valid<-train_set[idx.valid,]
     #Get training set, without validation set
-    cv.train<-train[-idx.valid,]
-    print(dim(cv.train))
+    cv.train<-train_set[-idx.valid,]
     #Train the model using training set
     model<-update(m[[j]], data=cv.train)
     #Predict values using validation set (without price column)
@@ -1060,7 +1117,7 @@ lines(cv.rmse[,3], col="yellow") # 3rd mode
 lines(cv.rmse[,4], col="orange") # 4th model
 lines(cv.rmse[,5], col="purple") # 5th model
 lines(cv.rmse[,6], col="green") # 6th model
-lines(cv.rmse[,7], col="cyan") # 7th model
+# lines(cv.rmse[,7], col="cyan") # 7th model
 
 # Plot the R2 at every iteration
 plot(cv.rsquared[,1], type="l", col="red", ylim=c(0.3,1)) # 1st model
@@ -1069,7 +1126,7 @@ lines(cv.rsquared[,3], col="yellow") # 3rd mode
 lines(cv.rsquared[,4], col="orange") # 4th model
 lines(cv.rsquared[,5], col="purple") # 5th model
 lines(cv.rsquared[,6], col="green") # 6th model
-lines(cv.rsquared[,7], col="cyan") # 7th model
+# lines(cv.rsquared[,7], col="cyan") # 7th model
 
 #Initialize mean values for prediction scores
 cv.mean.rmse<-c()

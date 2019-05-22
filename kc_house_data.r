@@ -874,7 +874,18 @@ cv.error3
 
 #grade 5
 
+#VERY IMPORTANT! THIS COULD BE THE SOLUTION
+par(mfrow=c(1,1))
+library(glmnet)
+fit = glmnet(as.matrix(train_set[,-19]), as.vector(train_set[,19]))
+plot(fit)
 
+cvfit = cv.glmnet(x, y)
+
+fit$lambda
+fit$call
+
+predict(fit, as.matrix(val_set_X))
 
 colnames(kc_house)
 step.mod$call

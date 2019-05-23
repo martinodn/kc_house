@@ -521,7 +521,7 @@ par(mfrow=c(1,1))
 
 max_var=18
 # for(i in c(1:400)){print(train[i]==test[i])}
-regfit.best <- regsubsets(price~ ., data=kc_house[train,],nvmax=max_var, method="backward")
+regfit.best <- regsubsets(price~ ., data=kc_house[train,], nvmax=max_var, method="backward")
 summary(regfit.best)
 # model matrix construction 
 test.mat <- model.matrix(price~ .,data=kc_house[test,])
@@ -801,12 +801,33 @@ importance = varImp(KCHouseDataModel)
 # we can design a CV with regularization also:
 trained <- list()
 formulas <- list(formula1, formula2, formula3, formula4, formula5)
+best_rmse <- c() # Best RMSE score per formula
+best_r2 <- c() # Best R2 score per formula
+# Train every formula using CV
 for (i in 1:length(formulas)) {
-  trained[[i]] <- train(formulas[[i]], data = train_set, method = "glmnet",trControl = fitControl,metric="RMSE")
+  trained[[i]] <- train(formulas[[i]], data=train_set, method="glmnet", trControl=fitControl, metric="RMSE")
+  # Save best RMSE
+  best_rmse <- c(best_rmse, min(trained[[i]]$results$RMSE))
+  # Save best R2
+  best_r2 <- c(best_r2, max(trained[[i]]$results$Rsquared))
 }
+
+par(mfrow=c(1,2))
 # Plot of RMSE
-plot(trained[[1]]$results$RMSE)
-trained[[1]]
+plot(best_rmse, main="RMSE per formula", xlab="Formula", ylab="RMSE")
+# Plot of R2
+plot(best_r2, main="R2 per formula", xlab="Formula", ylab="R2")
+par(mfrow=c(1,1))
+
+# Training of lm on the whole training set
+# best_lm <- lm(trained[[3]], data=train_set)
+# Predict values using test set
+pred <- predict(trained[[3]], newdata=test_set)
+obs <- test_set[,19]
+# Compute RMSE
+RMSE(pred, obs)
+# Compute R2
+R2(pred, obs)
 
 # # ensure the results are repeatable
 # set.seed(7)

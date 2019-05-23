@@ -1,5 +1,4 @@
 #import libraries 
-
 library(tidyverse)
 library(boot)
 library(stringr)
@@ -216,40 +215,32 @@ map.kc <- map.kc + geom_point(data = kc_house, aes(x = kc_house$long, y = kc_hou
 # Plot map
 map.kc
 
-#Plotting the pair plot should give some idea about correlation between our variables
-#However, pair plot of all the columns is large and difficult to manage.
-#Hence, we proceed by plotting few variables against each other.
+# Print a table containing correlation between covariables
+cor(kc_house)
+# Plot correlation between covariates
+corrplot(cor(kc_house))
 
-#TO ADD: PAIRPLOT
-
-
-#We begin to plot the features
-
-#DATE (cor=-0.00570)
-#we notice we have a continuous detection for the dates: almost every day (starting from the initial one)
-#there are some house sold and so we don't have time intervals in which values of price are not present, 
-#as we can see from this plot.
+# DATE (cor=-0.00570)
+# We notice we have a continuous detection for the dates: almost every day (starting from the initial one)
+# there are some house sold and so we don't have time intervals in which values of price are not present, 
+# as we can see from this plot.
 plot(sort(date))
-
-#we plot the price as a function of the date
+# Plot of price as a function of the date
 plot(price~date, main="Price by date")
-
-#it is not a very good plot, so we can try with the boxplot
+# Plot using boxplot to gain more information about the correlation between price and date
 boxplot(price~sort(date), main="Price by date")
-
-#to see in a better way the data, we can average for each date the prices of the houses sold in that
-#day. Obviously we get an approximation, but this is not a big deal having a lot of examples (about 60 
-#per day) and this allows us to see really data in a nicer way.
+# To see in a better way the data, we can average for each date the prices of the houses sold in that
+# day. Obviously we get an approximation, but this is not a big deal having a lot of examples (about 60 
+# per day) and this allows us to see really data in a nicer way.
 average_price_bydate <-aggregate(price~date, FUN=mean, data=kc_house)
 plot(average_price_bydate, col=1,main="Average price by date")
 lines(loess.smooth(date, price), col=2, lty=5)
-#we see that the date does not influence so much the price of the house
+# Hence, the date does not influence much the price
 
-
-#BEDROOMS (cor=0.35100546)
+# BEDROOMS (cor=0.35100546)
 boxplot(price~bedrooms, xlab="bedrooms", ylab="price",main="Price by bedrooms")
-#we see that the greater the number of bedrooms, the greater the price. Also we can notice that
-#there is a big number of outliers in the upper part for values of bedrooms in the range 2-6.
+# We see that the greater the number of bedrooms, the greater the price. Also we can notice that
+# there is a big number of outliers in the upper part for values of bedrooms in the range 2-6.
 
 kc_house %>%
   group_by(bedrooms) %>%
@@ -260,7 +251,7 @@ kc_house %>%
 
   ggplot(aes(x = bedrooms,y = PriceMedian)) +
   geom_bar(stat='identity',colour="white", fill = "yellow") +
-  geom_text(aes(x = bedrooms, y = 1, label = paste0("(",PriceMedian,")",sep="")),
+  geom_text(aes(x = bedrooms, y = 1, label = paste0(" ",PriceMedian, sep="")),
             hjust=0, vjust=.5, size = 4, colour = 'black',
             fontface = 'bold') +
   labs(x = 'bedrooms', 
@@ -268,10 +259,11 @@ kc_house %>%
        title = 'Median price per number of bedrooms') +
   coord_flip() + 
   theme_bw()
+
 #BATHROOMS (cor=0.55082290)
 boxplot(price~bathrooms, xlab="bathrooms", ylab="price",main="Price by bathrooms")
-#Also in this case, and more than for the previous one, it is clear that if we increase the number of 
-#bathrooms, also the price increases.
+# Also in this case, and more than for the previous one, it is clear that if we increase the number of 
+# bathrooms, also the price increases.
 
 kc_house %>%
   group_by(bathrooms) %>%
@@ -281,56 +273,55 @@ kc_house %>%
   arrange(desc(PriceMedian)) %>%
   head(10) %>%
   
-  
   ggplot(aes(x = bathrooms,y = PriceMedian)) +
   geom_bar(stat='identity',colour="white", fill = fillColor2) +
-  geom_text(aes(x = bathrooms, y = 1, label = paste0("",PriceMedian,"",sep="")),
+  geom_text(aes(x = bathrooms, y = 1, label = paste0(" ", PriceMedian, sep="")),
             hjust=0, vjust=.5, size = 4, colour = 'black',
             fontface = 'bold') +
-  labs(x = 'bathrooms', 
-       y = 'Median Price', 
-       title = 'bathrooms and Median Price') +
+  labs(x = 'bathrooms', y = 'Median Price', title = 'bathrooms and Median Price') +
   coord_flip() + 
   theme_bw()
 
-#SQFT_LIVING (cor=0.69536476)
+# SQFT_LIVING (cor=0.69536476)
 plot(price~sqft_living,main="Price by sqft_living")
 lines(loess.smooth(sqft_living, price), col=3)
-
-
-#we can see data better:
+# Check averages instead of actual data
 average_price_bysqftliving <-aggregate(price~sqft_living, FUN=mean, data=kc_house)
 plot(average_price_bysqftliving, col=1,main="Average price by living area")
 lines(loess.smooth(sqft_living, price), col=3)
-#also in this case there is an evident association between the dimensions of the living area and the price.
+# Also in this case there is an evident association between the dimensions of the living area and the price.
 
-
-#SQFT_LOT (cor=0.09962940)
+# SQFT_LOT (cor=0.09962940)
 plot(price~sqft_lot)
-#we apply the aggregate function
+# Apply the aggregate function
 average_price_bysqftlot <-aggregate(price~sqft_lot, FUN=mean, data=kc_house)
 plot(average_price_bysqftlot, col=1,main="Average price by lot dimension")
 lines(loess.smooth(sqft_lot, price), col=3)
-#sqft_lot feature does not influence so much the target, as we can see from the plot
+# The plot shows that This feature does not influence so much the targe
 
-#FLOORS (cor= 0.31059266)
+# FLOORS (cor= 0.31059266)
 boxplot(price~floors, xlab="floors", main="Price by floor")
-#there is a little increase in the price as floors increase, but not so much
+# There is a little increase in the median price as floors increase, but not so much
 
-#WATERFRONT (cor=0.17459026)
+# WATERFRONT (cor=0.17459026)
 boxplot(price~waterfront, xlab="waterfront", main="Price by waterfront")
-#low correlation
 
-#VIEW (cor= 0.34653430)
+# VIEW (cor= 0.34653430)
 boxplot(price~view, xlab="view", main="Price by view")
-#We notice that there is a soft correlation between the covariate view and price
+# The plot shows that there is a correlation between the covariate view and price
 
-#CONDITION (cor= 0.03949428)
+# CONDITION (cor= 0.03949428)
 boxplot(price~condition, xlab="condition", main="Price by condition")
 
-#GRADE (cor= 0.70366105)
+# GRADE (cor= 0.70366105)
 boxplot(price~grade, xlab="grade", main="Price by grade")
-#grade has a strong correlation with the target!!
+# The plot shows that the grade has a strong correlation with the target
+
+# We suspect correlation between GRADE and almost every other covariate
+# since GRADE is the mark given by an expert after evaluating many aspects of an house.
+# Hence, we try to fit a linear model in order to predict the grade using every covariate, except from price
+lm_grade <- lm(grade ~ . -price -sqft_lot15 -date, data=kc_house)
+summary(lm_grade)
 
 kc_house %>%
   group_by(grade) %>%
@@ -342,64 +333,92 @@ kc_house %>%
   
   ggplot(aes(x = grade,y = PriceMedian)) +
   geom_bar(stat='identity',colour="white", fill = fillColor) +
-  geom_text(aes(x = grade, y = 1, label = paste0("",PriceMedian,"",sep="")),
+  geom_text(aes(x = grade, y = 1, label = paste0(" ",PriceMedian, sep="")),
             hjust=0, vjust=.5, size = 4, colour = 'black',
             fontface = 'bold') +
-  labs(x = 'grade', 
-       y = 'Median Price', 
-       title = 'grade and Median Price') +
+  labs(x = 'Grade', 
+       y = 'Median price', 
+       title = 'Grade and median price') +
   coord_flip() + 
   theme_bw()
 
-#SQFT_ABOVE(cor=0.60184347)
+# SQFT_ABOVE(cor=0.60184347)
 plot(price~sqft_above)
-#not so nice... we can see it better
+# Check average values instead of median
 average_price_bysqftabove <-aggregate(price~sqft_above, FUN=mean, data=kc_house)
 plot(average_price_bysqftabove, col=1,main="Average price by above dimension")
 lines(loess.smooth(sqft_above, price), col=5)
-#price is really increasing as sqft_above increases!
+# The plot shows that price is linearly dependent from the feature sqft_above
 
-#YR_BUILT (cor=0.08067957)
+# YR_BUILT (cor=0.08067957)
 plot(price~yr_built)
 lines(loess.smooth(yr_built, price), col=5)
-
+# Plot using the means
 average_price_yb <-aggregate(price~yr_built, FUN=mean, data=kc_house)
 plot(average_price_yb, col=1,main="Average price by construction year", ylim=c(5,6.5))
 lines(loess.smooth(yr_built, price), col=5)
+# Previous plots shows that there is no linear relationship between when an house has been built and its price
 
-#YR_LAST_RENOVATION (cor=0.13032651)
+# YR_LAST_RENOVATION (cor=0.13032651)
 plot(price~yr_last_renovation)
-length(yr_last_renovation)
-
+lines(loess.smooth(yr_last_renovation, price), col=5)
+# Plot using the means
 average_price_ylr <-aggregate(price~yr_last_renovation, FUN=mean, data=kc_house)
 plot(average_price_ylr, col=1,main="Average price by above dimension", ylim=c(4.9,6.7))
 lines(loess.smooth(yr_last_renovation, price), col=5)
 
-#ZIPCODE (cor=0.03831967)
-boxplot(price~zipcode)
-lines(loess.smooth(zipcode, price), col=5)
-
-average_price_zc <-aggregate(price~zipcode, FUN=mean, data=kc_house)
-plot(average_price_zc, col=1,main="Average price by zipcode", ylim=c(5,6.8))
-lines(loess.smooth(zipcode, price), col=5)
-
-#LAT (cor=0.44916082)
+# LAT (cor=0.44916082)
 plot(price~lat)
 lines(loess.smooth(lat, price), col=5)
-
+# Plot using the means
 average_price_lat <-aggregate(price~lat, FUN=mean, data=kc_house)
 plot(average_price_lat, col=1,main="Average price by lat")
 lines(loess.smooth(lat, price), col=5)
-#can be seen a quite strong correlation
+# The plot shows that latitude and price are quite correlated
 
-#LONG (cor=0.04996692)
-plot(price~long)
-
+# LONG (cor=0.04996692)
+plot(price ~ long)
+lines(loess.smooth(long, price), col=5)
+# Plot using the means
 average_price_long <-aggregate(price~long, FUN=mean, data=kc_house)
 plot(average_price_long, col=1,main="Average price by long")
 lines(loess.smooth(long, price), col=5)
-#not so significant the long
+# The logitude seems to be less correlated with price
 
+# ZIPCODE (cor=0.03831967)
+plot(price~zipcode)
+lines(loess.smooth(zipcode, price), col=5)
+# Plot using the means
+average_price_zc <-aggregate(price~zipcode, FUN=mean, data=kc_house)
+plot(average_price_zc, col=1,main="Average price by zipcode", ylim=c(5,6.8))
+lines(loess.smooth(zipcode, price), col=5)
+# Plots using boxplots
+boxplot(price~zipcode)
+
+# Since we suspect a strong correlation between LONG, LAT and ZIPCODE, we plot them on the map
+# There are 70 zipcodes
+n_zipcodes <- length(unique(zipcode))
+# Define colors scheme (randomly)
+set.seed(3)
+# Select one different color per zipcode
+palette <- randomColor(n_zipcodes)
+# Set location bounds (King County)
+location <- c(-123.25, 47.15, -121.25, 47.9)
+# Fetch the map (osm = OpenStreetMap)
+map <- get_map(location=location, source="osm")
+# Plot the points on the map using lat and long, while the color is given by the zipcode
+plt <- ggmap(map)
+plt <- plt + geom_point(data=kc_house, aes(x=long, y=lat, col=as.factor(zipcode)))
+plt <- plt + theme(legend.position='none')
+plt <- plt + scale_colour_manual(values=palette)
+plt
+
+# We hence try to fit a linear model to predict correlation between LONG, LAT and ZIPCODE
+lm_zipcode <- lm(zipcode ~ long + lat, data=kc_house)
+summary(lm_zipcode)
+# The linear model does not provide a significantly high R squared value, hence we can keep all the variables
+
+# PRICE with respect to LAT and LONG
 # Get colors for labeling the points
 plotvar <- kc_house$price # pick a variable to plot
 nclr <- 8 # number of colors
@@ -468,49 +487,62 @@ MapPriceGroups(PriceGroup4,"orange")
 MapPriceGroups(PriceGroup5,"#0B5345")
 
 
-#ZIPCODE in function of latitude and longitude
-#Not that zipcode is an integer value, but is referred to a discrete variable
-#First we are interested to know how many zipcodes are there
-length(unique(zipcode)) # There are 70 zipcodes
-# Define a plot coloured with respect to zipcode
-set.seed(3)
-palette <- randomColor(length(unique(zipcode)))
-plt <- ggplot(kc_house, aes(x=long, y=lat, col=as.factor(zipcode)) ) 
-plt <- plt + geom_point()
-plt <- plt + theme(legend.position='none')
-plt <- plt + scale_colour_manual(values=palette)
-plt
-
-#SQFT_LIVING_15 (cor=0.61935746)
+# SQFT_LIVING_15 (cor=0.61935746)
 plot(price~sqft_living15)
+lines(loess.smooth(sqft_living15, price), col=3)
+# Plot using means
 average_price_l15 <-aggregate(price~sqft_living15, FUN=mean, data=kc_house)
 plot(average_price_l15, col=1,main="Average price by sqft_living15")
 lines(loess.smooth(sqft_living15, price), col=5)
-#really significant!
+# The plot shows that price and sqft_living are strictly correlated
 
-#SQFT_LOT15 (cor=0.09160121)
+# SQFT_LOT15 (cor=0.09160121)
 plot(price~log10(sqft_lot15))
-
+lines(loess.smooth(log10(sqft_lot15), price), col=3)
+# Plot using means
 average_price_lot15 <-aggregate(price~sqft_lot15, FUN=mean, data=kc_house)
 plot(average_price_lot15, col=1,main="Average price by sqft_lot15")
 lines(loess.smooth(sqft_lot15, price), col=5)
 
-corrplot(cor(kc_house))
-
-
-#####
-# first of all we want to know:
 # WHAT ARE MOST IMPORTANT FEATURE TO PREDICT THE PRICE?
-
 # We try to answer the question looking at the features that causes the greatest decrease in
 # the R2 value, repeating the process iteratively for each feature.
-
+# Linear model of price against every feature
 model <- lm(price~ ., data=kc_house)
-
 sm <- summary(model)
 
+# Definition of an empty matrix which contains model, R2, adjusted R2
+models <- matrix(data=NA, nrow=18, ncol=5, dimnames=list(c(), c('deleted', 'r2', 'adj.r2', 'diff.r2', 'diff.adj.r2')))
+# Define the features names 
+features <- colnames(kc_house)[-19]
+# Loop through every model combination without a single feature
+for(i in 1:length(features)) {
+  # Define a linear model without the current feature
+  curr_model <- lm(as.formula(paste('price ~ . -', features[i], sep='')), data=kc_house)
+  # Save the summary
+  curr_sm <- summary(curr_model)
+  # Save deleted feature, r2 and adjusted r2
+  models[i,1] <- features[i]
+  models[i,2] <- curr_sm$r.squared
+  models[i,3] <- curr_sm$adj.r.squared
+  # Add difference between previous and current r2 and adjusted r2
+  models[i,4] <- sm$r.squared - curr_sm$r.squared
+  models[i,5] <- sm$adj.r.squared - curr_sm$adj.r.squared
+}
+# Find the feature which causes the greatest decrease in R2 value when deleted
+models[which.max(models[,4]),1]
+# Order the matrix by r2 difference
+models <- models[order(as.numeric(models[,4]), decreasing=TRUE),]
+# Show models
+fix(models)
+# Plot the features "importance"
+plot(models[,4], xlab="", ylab="R2 difference", main="R2 feature importance", xaxt='n', type='p')
+# Add labels  
+axis(1, at=1:length(models[,1]), labels=models[,1], las=2)
 
-
+# Plot of price as function of the covariates, taken one by one
+# Note that heare only the best 7 covariates, by importance given by r2 difference, are taken
+pairs(price ~ lat + grade + yr_built + sqft_living + sqft_living15 + condition + view, data=kc_house)
 
 
 ##########

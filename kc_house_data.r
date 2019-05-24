@@ -1,3 +1,5 @@
+#import libraries 
+
 library(tidyverse)
 library(boot)
 library(stringr)
@@ -487,6 +489,8 @@ lines(loess.smooth(sqft_lot15, price), col=5)
 cor(kc_house)
 
 
+
+
 #BACKWARD VARIABLE SELECTION
 
 #Define the random seed (otherwise we cannot repeat exactly the same experiment)
@@ -515,35 +519,47 @@ par(mfrow=c(1,1))
 # plot(reg.summary$bic,xlab="Number of Variables",ylab="BIC",type='l')
 
 
+
+
+##########
+# BACKWARD FEATURE SELECTION
+
+# We want to find the best model of grade 1: first of all we try considering the 18 best models
+# (one for each number of variables) and then with the step function, using AIC as metrics.
+# We then also find the best models of grade 2-5 with the step function using AIC.
+
+
+
+# grade 1
+
 #we want to find the best model to predict, so first of all we find the best model for each
 #number of covariates, then we apply a 10-fold Cross Validation to see which of those
 #has the smaller error in the prediction
 
+#maximum number of predictors
 max_var=18
-# for(i in c(1:400)){print(train[i]==test[i])}
-regfit.best <- regsubsets(price~ ., data=kc_house[train,], nvmax=max_var, method="backward")
+
+#find the best model per number of predictors
+regfit.best <- regsubsets(price~ ., data=kc_house, nvmax=max_var, method="backward")
 summary(regfit.best)
 # model matrix construction 
-test.mat <- model.matrix(price~ .,data=kc_house[test,])
-test.mat
+# test.mat <- model.matrix(price~ .,data=kc_house[test,])
+# test.mat
 # colnames(test.mat)
 
 # RMSE on the test set
-val.errors=rep(NA,max_var)
-for(i in 1:max_var){
-  coefi <- coef(regfit.best,id=i)
-  pred <- test.mat[,names(coefi)]%*%coefi
-  val.errors[i] <- sqrt(mean((kc_house$price[test]-pred)^2))
-}
+# val.errors=rep(NA,max_var)
+# for(i in 1:max_var){
+#   coefi <- coef(regfit.best,id=i)
+#   pred <- test.mat[,names(coefi)]%*%coefi
+#   val.errors[i] <- sqrt(mean((kc_house$price[test]-pred)^2))
+# }
+# 
+# val.errors
+# best<-which.min(val.errors)
+# 
+# coef(regfit.best, best)
 
-val.errors
-best<-which.min(val.errors)
-
-coef(regfit.best, best)
-
-#select the best model with 13 predictors
-regfit.best <- regsubsets(price~ ., data=kc_house, nvmax=max_var)
-coef(regfit.best, best)
 
 # K-fold cross-validation
 predict.regsubsets <- function(object, newdata, id, ...){
@@ -556,7 +572,7 @@ predict.regsubsets <- function(object, newdata, id, ...){
 
 k=10
 set.seed(1)
-folds <- sample(1:k, n, replace=TRUE)
+folds <- sample(1:k, dim(kc_house)[1], replace=TRUE)
 cv.errors <- matrix(NA, k, max_var, dimnames=list(NULL, paste(1:max_var)))
 
 for(j in 1:k){
@@ -564,31 +580,38 @@ for(j in 1:k){
   
   for(i in 1:max_var){
     pred <- predict(best.fit, kc_house[folds==j,], id=i)
-    cv.errors[j,i] <- sqrt(mean((10**(kc_house$price[folds==j])-10**(pred))^2))
+    cv.errors[j,i] <- sqrt(mean((kc_house$price[folds==j]-pred)^2))
   }
 }
 
 mean.cv.errors <- apply(cv.errors, 2, mean)
+
+
+#vector of mean errors
 mean.cv.errors
+
+#number of variables in the best model
 which.min(mean.cv.errors)
 
+#error with the best model (17 variables)
 mean.cv.errors[which.min(mean.cv.errors)]
 
 plot(mean.cv.errors, type="l")
 points(which.min(mean.cv.errors), mean.cv.errors[which.min(mean.cv.errors)])
 #######
 
-##########
-# BACKWARD FEATURE SELECTION
+
 # We try to find the best model for each grade of polynomial, according to AIC metric
 
 # Set n as training set dimension
-n <- length(train_set[,19])
+n <- dim(kc_house)[1]
 
 # grade 1
-full.mod <- lm(price~ ., data=train_set)
+full.mod <- lm(price~ ., data=kc_house)
 step.mod <- step(full.mod, steps=100, k=log(n), trace=1, direction="backward")
 formula1 <- step.mod$call$formula
+
+# NOTE: the formula is the same we get using the previous method! 
 
 set.seed(17)
 glm.fit <- glm(formula1,data=kc_house)
@@ -614,7 +637,7 @@ full.mod <- lm(price~date+I(date^2)+
               +long+I(long^2)
               +sqft_living15+I(sqft_living15^2)
               +sqft_lot15+I(sqft_lot15^2),
-              data=train_set)
+              data=kc_house)
 step.mod <- step(full.mod, steps=100, k=log(n), trace=1, direction="backward")
 formula2<-step.mod$call$formula
 
@@ -726,41 +749,7 @@ predict(fit, as.matrix(val_set_X))
 
 colnames(kc_house)
 step.mod$call
-library(boot)
-set.seed(17)
-cv.error.4 <- rep(0,4)
-for (i in 1:4){
-  glm.fit <- glm(price~ poly(date,i) + poly(bedrooms, i) + poly(bathrooms, i) + poly(sqft_living,i)+
-                   + poly(sqft_lot,i) + poly(floors,i)+ waterfront+ poly(view,i)+ 
-                   + poly(condition,i)+ poly(grade,i)+ poly(sqft_above,i)+
-                   + poly(yr_built,i)+ poly(yr_last_renovation,i)+ poly(zipcode,i)+ poly(lat,i)+
-                   + poly(long,i)+ poly(sqft_living15,i)+ poly(sqft_lot15,i)
-                 ,data=train_set)
-  cv.error.4[i] <- cv.glm(train_set, glm.fit, K=10)$delta[1]
-}
-cv.error.4
 
-regfit.fwd <- regsubsets(price~poly(date,2)+
-                           poly(bedrooms,2)+
-                           poly(bathrooms,2)+
-                           poly(sqft_living,2)+
-                           poly(sqft_lot,2)+
-                           poly(floors,2)+
-                           waterfront+
-                           poly(view,2)+
-                           poly(condition,2)+
-                           poly(grade,2)+
-                           poly(sqft_above,2)+
-                           poly(yr_built,2)+
-                           poly(yr_last_renovation,2)+
-                           poly(zipcode,2)+
-                           poly(lat,2)+
-                           poly(long,2)+
-                           poly(sqft_living15,2)+
-                           poly(sqft_lot15,2),data=kc_house, nvmax=18,method="forward")
-summary(regfit.fwd)
-
-reg.summary <- summary(regfit.fwd)
 
 #
 # first group of plots 

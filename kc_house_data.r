@@ -28,6 +28,7 @@ kc_house<-read.csv("kc_house_data.csv")
 #check the dimension of the dataset
 dim(kc_house)
 
+
 #convert date from string to observation number of the day (starting from 1)
 new.date<-as.Date(kc_house$date,'%Y%m%d')
 new.date<-new.date-(sort(new.date))[1]
@@ -55,6 +56,7 @@ kc_house<-kc_house[-1]
 # kc_house
 dim(kc_house)
 kc_house
+
 #we now take into account the column "yr_renovated": this column express the year of the last renovation of the
 #house. Since the null values are coded as 0 and the other are coded as a year, this two are not very consistent and
 #so we want to transform this column into a feature that express the year of the last renovation: if no renovation
@@ -163,9 +165,20 @@ kc_house[18]<-log10(kc_house$sqft_lot15)
 
 hist(kc_house$sqft_lot, breaks=50, main = "Histogram of dimensions of lots")
 
+
 #We want to see the type of houses we're dealing with; thus, we check the distribution of the grade of the
 #houses and we compare it to a normal distribution.
-hist(kc_house$price, breaks = 12, main = "Price frequency", xlab="Price")
+hist(kc_house$price, breaks = 1000, main = "Price frequency", xlab="Price")
+
+out_threshold<-min(boxplot(kc_house$price)$out)
+
+# We are cutting out 5% of the data (outliers) that are not representative wrt to the type 
+# of houses our predictor has to deal with
+dim(kc_house[kc_house$price>out_threshold,])[1]/dim(kc_house)[1]*100
+kc_house<-kc_house[kc_house$price<out_threshold,]
+dim(kc_house)
+
+hist(kc_house$price, breaks=100)
 qqnorm(kc_house$price)
 
 #Instead, if we would consider the log10 transformation of the target value, the distribution
@@ -173,9 +186,7 @@ qqnorm(kc_house$price)
 qqnorm(log10(kc_house$price))
 #we also log the price
 kc_house[19]<-log10(kc_house[19])
-dim(kc_house)
-length(kc_house$yr_last_renovation)
-# kc_house<-kc_house[kc_house$price < log10(1000000),]
+hist(kc_house$price, breaks = 100, main= "Frequency of log(price)", xlab = "log(price)")
 dim(kc_house)
 
 
@@ -211,7 +222,7 @@ map.kc
 
 #TO ADD: PAIRPLOT
 
-corrplot(cor(kc_house))
+
 #We begin to plot the features
 
 #DATE (cor=-0.00570)
@@ -365,7 +376,7 @@ plot(average_price_ylr, col=1,main="Average price by above dimension", ylim=c(4.
 lines(loess.smooth(yr_last_renovation, price), col=5)
 
 #ZIPCODE (cor=0.03831967)
-plot(price~zipcode)
+boxplot(price~zipcode)
 lines(loess.smooth(zipcode, price), col=5)
 
 average_price_zc <-aggregate(price~zipcode, FUN=mean, data=kc_house)
@@ -379,7 +390,6 @@ lines(loess.smooth(lat, price), col=5)
 average_price_lat <-aggregate(price~lat, FUN=mean, data=kc_house)
 plot(average_price_lat, col=1,main="Average price by lat")
 lines(loess.smooth(lat, price), col=5)
-
 #can be seen a quite strong correlation
 
 #LONG (cor=0.04996692)
@@ -396,7 +406,7 @@ nclr <- 8 # number of colors
 plotclr <- brewer.pal(nclr, "PuBu") # get the colors
 colornum <- cut(rank(plotvar), nclr, labels=FALSE)
 colcode <- plotclr[colornum] # assign color
-plot.angle <- 340
+plot.angle <- 290
 # 3D Scatter plot
 scatterplot3d(kc_house$long, kc_house$lat, plotvar, type="h", angle=plot.angle, color=colcode, pch=20, cex.symbols=2, 
               col.axis="gray", col.grid="gray", xlab="Longitude", ylab="Latitude", zlab="Price")
@@ -404,12 +414,12 @@ scatterplot3d(kc_house$long, kc_house$lat, plotvar, type="h", angle=plot.angle, 
 
 
 #We plot the houses in the map
-bins<-cut(kc_house$price, c(0,log10(250e3),log10(500e3),log10(750e3),log10(1e6),log10(2e6),log10(999e6)))
+bins<-cut(kc_house$price, c(0,log10(250e3),log10(500e3),log10(750e3),log10(1e6),log10(2e6)))
 
 center_lon = median(kc_house$long,na.rm = TRUE)
 center_lat = median(kc_house$lat,na.rm = TRUE)
 
-factpal <- colorFactor(c("black","blue","yellow","orange","#0B5345","red"), 
+factpal <- colorFactor(c("black","blue","yellow","orange","#0B5345"), 
                        bins)
 
 
@@ -438,7 +448,6 @@ PriceGroup2 = PriceBinGrouping(log10(250e3),log10(500e3))
 PriceGroup3 = PriceBinGrouping(log10(500e3),log10(750e3))
 PriceGroup4 = PriceBinGrouping(log10(750e3),log10(1e6))
 PriceGroup5 = PriceBinGrouping(log10(1e6),log10(2e6))
-PriceGroup6 = PriceBinGrouping(log10(2e6),log10(999e6))
 
 MapPriceGroups = function(PriceGroupName,color)
 {
@@ -457,7 +466,7 @@ MapPriceGroups(PriceGroup2,"blue")
 MapPriceGroups(PriceGroup3,"yellow")
 MapPriceGroups(PriceGroup4,"orange")
 MapPriceGroups(PriceGroup5,"#0B5345")
-MapPriceGroups(PriceGroup6,"red")
+
 
 #ZIPCODE in function of latitude and longitude
 #Not that zipcode is an integer value, but is referred to a discrete variable
@@ -486,19 +495,34 @@ average_price_lot15 <-aggregate(price~sqft_lot15, FUN=mean, data=kc_house)
 plot(average_price_lot15, col=1,main="Average price by sqft_lot15")
 lines(loess.smooth(sqft_lot15, price), col=5)
 
-cor(kc_house)
+corrplot(cor(kc_house))
+
+
+#####
+# first of all we want to know:
+# WHAT ARE MOST IMPORTANT FEATURE TO PREDICT THE PRICE?
+
+# We try to answer the question looking at the features that causes the greatest decrease in
+# the R2 value, repeating the process iteratively for each feature.
+
+model <- lm(price~ ., data=kc_house)
+
+sm <- summary(model)
 
 
 
 
-#BACKWARD VARIABLE SELECTION
+
+##########
+# BACKWARD FEATURE SELECTION
 
 #Define the random seed (otherwise we cannot repeat exactly the same experiment)
 set.seed(29)
 #try to evaluate performance of different models splitting the whole set into training-validation-test set
-id.train<-createDataPartition(price, p=.80, list=FALSE)
-train_set<-kc_house[id.train,] #80
-test_set<-kc_house[-id.train,] #20
+id.train<-createDataPartition(price, p=.90, list=FALSE)
+train_set<-kc_house[id.train,] #90
+test_set<-kc_house[-id.train,] #10
+
 
 par(mfrow=c(1,2))
 boxplot(train_set$price, main="Train", ylim=c(4.5,7))
@@ -519,14 +543,9 @@ par(mfrow=c(1,1))
 # plot(reg.summary$bic,xlab="Number of Variables",ylab="BIC",type='l')
 
 
-
-
-##########
-# BACKWARD FEATURE SELECTION
-
 # We want to find the best model of grade 1: first of all we try considering the 18 best models
-# (one for each number of variables) and then with the step function, using AIC as metrics.
-# We then also find the best models of grade 2-5 with the step function using AIC.
+# (one for each number of variables) and then with the step function, using Schwarz Information Criterion as metrics.
+# We then also find the best models of grade 2-5 with the step function using BIC.
 
 
 
@@ -540,8 +559,8 @@ par(mfrow=c(1,1))
 max_var=18
 
 #find the best model per number of predictors
-regfit.best <- regsubsets(price~ ., data=kc_house, nvmax=max_var, method="backward")
-summary(regfit.best)
+regfit.best <- regsubsets(price~ ., data=train_set, nvmax=max_var, method="backward")
+reg.summary <- summary(regfit.best)
 # model matrix construction 
 # test.mat <- model.matrix(price~ .,data=kc_house[test,])
 # test.mat
@@ -572,17 +591,27 @@ predict.regsubsets <- function(object, newdata, id, ...){
 
 k=10
 set.seed(1)
-folds <- sample(1:k, dim(kc_house)[1], replace=TRUE)
+folds <- sample(1:k, dim(train_set)[1], replace=TRUE)
 cv.errors <- matrix(NA, k, max_var, dimnames=list(NULL, paste(1:max_var)))
 
 for(j in 1:k){
-  best.fit <- regsubsets(price~ ., data=kc_house[folds!=j,], nvmax=max_var)
+  best.fit <- regsubsets(price~ ., data=train_set[folds!=j,], nvmax=max_var)
   
   for(i in 1:max_var){
-    pred <- predict(best.fit, kc_house[folds==j,], id=i)
-    cv.errors[j,i] <- sqrt(mean((kc_house$price[folds==j]-pred)^2))
+    pred <- predict(best.fit, train_set[folds==j,], id=i)
+    cv.errors[j,i] <- sqrt(mean((train_set$price[folds==j]-pred)^2))
   }
 }
+
+plot(reg.summary$rss,xlab="Number of Variables",ylab="RSS",type="l")
+points(which.min(reg.summary$rss),reg.summary$rss[which.min(reg.summary$rss)], col="red",cex=2,pch=20)
+
+plot(reg.summary$adjr2,xlab="Number of Variables",ylab="Adjusted RSq",type="l")
+which.max(reg.summary$adjr2)
+points(which.max(reg.summary$adjr2),reg.summary$adjr2[which.max(reg.summary$adjr2)], col="red",cex=2,pch=20)
+
+plot(reg.summary$cp,xlab="Number of Variables",ylab="Cp",type='l')
+plot(reg.summary$bic,xlab="Number of Variables",ylab="BIC",type='l')
 
 mean.cv.errors <- apply(cv.errors, 2, mean)
 
@@ -596,28 +625,47 @@ which.min(mean.cv.errors)
 #error with the best model (17 variables)
 mean.cv.errors[which.min(mean.cv.errors)]
 
-plot(mean.cv.errors, type="l")
-points(which.min(mean.cv.errors), mean.cv.errors[which.min(mean.cv.errors)])
+plot(mean.cv.errors, type="l", main="RMSE for each model", xlab="Number of variables in the model",
+     ylab = "RMSE")
+points(which.min(mean.cv.errors), mean.cv.errors[which.min(mean.cv.errors)], col=2, pch=16)
 #######
 
 
-# We try to find the best model for each grade of polynomial, according to AIC metric
+# We try to find the best model for each grade of polynomial
 
 # Set n as training set dimension
-n <- dim(kc_house)[1]
+n <- dim(train_set)[1]
+
 
 # grade 1
-full.mod <- lm(price~ ., data=kc_house)
-step.mod <- step(full.mod, steps=100, k=log(n), trace=1, direction="backward")
+
+# We try with BIC 
+full.mod <- lm(price~ ., data=train_set)
+step.mod <- step(full.mod, steps=1000, k=log(n), trace=1, direction="backward")
 formula1 <- step.mod$call$formula
 
-# NOTE: the formula is the same we get using the previous method! 
+# Try using the AIC as metric for the selection 
 
+full.mod <- lm(price~ ., data=train_set)
+step.mod <- step(full.mod, steps=1000, trace=1, direction="backward")
+formula1 <- step.mod$call$formula
+
+
+# NOTE: the BIC penalize more in the number of varialbles (the optimal number according to BIC is 
+# 16), while with AIC we get the same model obtained in the previous procedure, the one
+# considering the 18 best model (one model for each number of variables).
+
+# cv.glm function: The data is divided randomly into K groups. For each group the
+# linear model is fit to data omitting that group, then the function cost (by default the 
+# average squared error function) is applied to the observed responses in the group 
+# that was omitted from the fit and the prediction
+# made by the fitted models for those observations.
 set.seed(17)
-glm.fit <- glm(formula1,data=kc_house)
-cv.error1 <- cv.glm(kc_house,glm.fit,K=10)$delta[1]
+glm.fit <- glm(formula1,data=train_set)
+cv.error1 <- cv.glm(train_set, glm.fit, K=10, cost=RMSE)$delta[1]
 cv.error1
 
+# We then proceed trying to find the best model for each degree of the polynomial
 #grade 2
 full.mod <- lm(price~date+I(date^2)+
               +bedrooms+I(bedrooms^2)+
@@ -637,13 +685,13 @@ full.mod <- lm(price~date+I(date^2)+
               +long+I(long^2)
               +sqft_living15+I(sqft_living15^2)
               +sqft_lot15+I(sqft_lot15^2),
-              data=kc_house)
-step.mod <- step(full.mod, steps=100, k=log(n), trace=1, direction="backward")
+              data=train_set)
+step.mod <- step(full.mod, steps=100, trace=1, k=log(n),direction="backward")
 formula2<-step.mod$call$formula
 
 set.seed(17)
-glm.fit <- glm(formula2,data=kc_house)
-cv.error2 <- cv.glm(kc_house,glm.fit,K=10)$delta[1]
+glm.fit <- glm(formula2,data=train_set)
+cv.error2 <- cv.glm(train_set,glm.fit,K=10, cost=RMSE)$delta[1]
 cv.error2
 
 #grade 3
@@ -665,13 +713,13 @@ full.mod <- lm(price~date+I(date^2)+I(date^3)+
             +long+I(long^2)+I(long^3)
             +sqft_living15+I(sqft_living15^2)+I(sqft_living15^3)
             +sqft_lot15+I(sqft_lot15^2)+I(sqft_lot15^3),
-            data=kc_house)
-step.mod <- step(full.mod, steps=100, k=log(n), trace=1, direction="backward")
+            data=train_set)
+step.mod <- step(full.mod, steps=100, trace=1, k=log(n),direction="backward")
 formula3<-step.mod$call$formula
 
 set.seed(17)
-glm.fit <- glm(formula3,data=kc_house)
-cv.error3 <- cv.glm(kc_house,glm.fit,K=10)$delta[1]
+glm.fit <- glm(formula3,data=train_set)
+cv.error3 <- cv.glm(train_set, glm.fit, K=10, cost=RMSE)$delta[1]
 cv.error3
 
 #grade 4
@@ -693,13 +741,13 @@ full.mod <- lm(price~date+I(date^2)+I(date^3)+I(date^4)
             +long+I(long^2)+I(long^3)+I(long^4)
             +sqft_living15+I(sqft_living15^2)+I(sqft_living15^3)+I(sqft_living15^4)
             +sqft_lot15+I(sqft_lot15^2)+I(sqft_lot15^3)+I(sqft_lot^4),
-            data=kc_house)
-step.mod <- step(full.mod, steps=100, k=log(n), trace=1, direction="backward")
+            data=train_set)
+step.mod <- step(full.mod, steps=100, trace=1, k=log(n),direction="backward")
 formula4 <- step.mod$call$formula
 
 set.seed(17)
-glm.fit <- glm(formula4, data=kc_house)
-cv.error4 <- cv.glm(kc_house, glm.fit, K=10)$delta[1]
+glm.fit <- glm(formula4, data=train_set)
+cv.error4 <- cv.glm(train_set, glm.fit, K=10, cost=RMSE)$delta[1]
 cv.error4
 
 #grade 5
@@ -721,58 +769,50 @@ full.mod <- lm(price~date+I(date^2)+I(date^3)+I(date^4)+I(date^5)
                +long+I(long^2)+I(long^3)+I(long^4)+I(long^5)
                +sqft_living15+I(sqft_living15^2)+I(sqft_living15^3)+I(sqft_living15^4)+I(sqft_living^5)
                +sqft_lot15+I(sqft_lot15^2)+I(sqft_lot15^3)+I(sqft_lot^4)+I(sqft_lot^5),
-               data=kc_house)
-step.mod <- step(full.mod, steps=100, k=log(n), trace=1, direction="backward")
-formula5<-step.mod$call$formula
+               data=train_set)
+step.mod <- step(full.mod, steps=150, trace=1,k=log(n), direction="backward")
+formula5 <- step.mod$call$formula
 
 set.seed(17)
-glm.fit <- glm(formula5, data=kc_house)
-cv.error5 <- cv.glm(kc_house, glm.fit, K=10)$delta[1]
+glm.fit <- glm(formula5, data=train_set)
+cv.error5 <- cv.glm(train_set, glm.fit, K=10, cost=RMSE)$delta[1]
 cv.error5
 
-cv.errors <- c(cv.error1, cv.error2, cv.error3, cv.error.4, cv.error5)
-plot(cv.errors)
+
+# Define the vector of errors
+cv.errors <- c(cv.error1, cv.error2, cv.error3, cv.error4, cv.error5)
+
+# Plot the errors (RMSE) according to the degree of the model
+plot(cv.errors, type="l", main="RMSE of the different models", xlab="Degree of the model")
+
+# Define the final model
+final_model <- glm(formula5, data = train_set)
+
+# Prediction over the test set with the final model
+prediction <- predict(final_model, test_set[,-19])
+
+#Errors with prediction
+postResample(10**(prediction),10**(test_set[,19]))
+
+
 
 #VERY IMPORTANT! THIS COULD BE THE SOLUTION
-par(mfrow=c(1,1))
-library(glmnet)
-fit = glmnet(as.matrix(train_set[,-19]), as.vector(train_set[,19]))
-plot(fit)
-
-cvfit = cv.glmnet(as.matrix(train_set[,-19]), as.vector(train_set[,19]))
-plot(cvfit)
-
-fit$lambda
-fit$call
-
-predict(fit, as.matrix(val_set_X))
-
-colnames(kc_house)
-step.mod$call
-
-
-#
-# first group of plots 
-#
-par(mfrow=c(2,2))
-
-# panel 1
-plot(reg.summary$rss,xlab="Number of Variables",ylab="RSS",type="l")
-
-# panel 2
-plot(reg.summary$adjr2,xlab="Number of Variables",ylab="Adjusted RSq",type="l")
-which.max(reg.summary$adjr2)
-points(which.max(reg.summary$adjr2),reg.summary$adjr2[which.max(reg.summary$adjr2)], col="red",cex=2,pch=20)
-
-# panel 3
-plot(reg.summary$cp,xlab="Number of Variables",ylab="Cp",type='l')
-which.min(reg.summary$cp)
-points(which.min(reg.summary$cp),reg.summary$cp[which.min(reg.summary$cp)],col="red",cex=2,pch=20)
-
-# panel 4
-plot(reg.summary$bic,xlab="Number of Variables",ylab="BIC",type='l')
-which.min(reg.summary$bic)
-points(which.min(reg.summary$bic),reg.summary$bic[which.min(reg.summary$bic)],col="red",cex=2,pch=20)
+# par(mfrow=c(1,1))
+# library(glmnet)
+# fit = glmnet(as.matrix(train_set[,-19]), as.vector(train_set[,19]))
+# plot(fit)
+# 
+# cvfit = cv.glmnet(as.matrix(train_set[,-19]), as.vector(train_set[,19]))
+# plot(cvfit)
+# 
+# fit$lambda
+# fit$call
+# 
+# predict(fit, as.matrix(test_set[,-19]))
+# 
+# colnames(kc_house)
+# 
+# step.mod$call
 
 
 ###########
@@ -788,35 +828,35 @@ KCHouseDataModel = train(formula1, data = train_set, method = "lm",trControl = f
 importance = varImp(KCHouseDataModel)
 
 # we can design a CV with regularization also:
-trained <- list()
-formulas <- list(formula1, formula2, formula3, formula4, formula5)
-best_rmse <- c() # Best RMSE score per formula
-best_r2 <- c() # Best R2 score per formula
-# Train every formula using CV
-for (i in 1:length(formulas)) {
-  trained[[i]] <- train(formulas[[i]], data=train_set, method="glmnet", trControl=fitControl, metric="RMSE")
-  # Save best RMSE
-  best_rmse <- c(best_rmse, min(trained[[i]]$results$RMSE))
-  # Save best R2
-  best_r2 <- c(best_r2, max(trained[[i]]$results$Rsquared))
-}
-
-par(mfrow=c(1,2))
-# Plot of RMSE
-plot(best_rmse, main="RMSE per formula", xlab="Formula", ylab="RMSE")
-# Plot of R2
-plot(best_r2, main="R2 per formula", xlab="Formula", ylab="R2")
-par(mfrow=c(1,1))
+# trained <- list()
+# formulas <- list(formula1, formula2, formula3, formula4, formula5)
+# best_rmse <- c() # Best RMSE score per formula
+# best_r2 <- c() # Best R2 score per formula
+# # Train every formula using CV
+# for (i in 1:length(formulas)) {
+#   trained[[i]] <- train(formulas[[i]], data=train_set, method="glmnet", trControl=fitControl, metric="RMSE")
+#   # Save best RMSE
+#   best_rmse <- c(best_rmse, min(trained[[i]]$results$RMSE))
+#   # Save best R2
+#   best_r2 <- c(best_r2, max(trained[[i]]$results$Rsquared))
+# }
+# 
+# par(mfrow=c(1,2))
+# # Plot of RMSE
+# plot(best_rmse, main="RMSE per formula", xlab="Formula", ylab="RMSE")
+# # Plot of R2
+# plot(best_r2, main="R2 per formula", xlab="Formula", ylab="R2")
+# par(mfrow=c(1,1))
 
 # Training of lm on the whole training set
 # best_lm <- lm(trained[[3]], data=train_set)
 # Predict values using test set
-pred <- predict(trained[[3]], newdata=test_set)
-obs <- test_set[,19]
-# Compute RMSE
-RMSE(pred, obs)
-# Compute R2
-R2(pred, obs)
+# pred <- predict(trained[[3]], newdata=test_set)
+# obs <- test_set[,19]
+# # Compute RMSE
+# RMSE(pred, obs)
+# # Compute R2
+# R2(pred, obs)
 
 # # ensure the results are repeatable
 # set.seed(7)
@@ -891,96 +931,5 @@ t = train(formula, data = train_set,
 importance = varImp(t)
 
 PlotImportance(importance)
-
-##############ANALYSIS WITHOUT OUTLIERS maderfuckerzzz?
-par(mfrow=c(1,1))
-
-fit <- rpart(price~., data = train_set)
-rpart.plot(fit, type=2, roundint = FALSE, digits = 3)
-
-min(kc_house$price)
-max(kc_house$price)
-mean(kc_house$price)
-##############################################THE UNTOUCHABLE ZONE!!!! ALERT!!!!! DANGER!!!!
-
-# Plot of explanatory values wrt price in form of a Tree in order to extract most important interactions
-# model <- tree(price~., data=kc_house)
-# plot(model) 
-# text(model)
-# Most explanatory variable is grade, followed by sqft_living and latitude
-# Hence we create a model conidering only first grade variables plus the interactions
-model7 <- lm(price ~ . + (grade + lat + sqft_living)^2, data=train_set)
-summary(model7)
-# We execute a proper backward selection, taking into account the p-vale
-model7 <- update(model7, . ~ . -sqft_lot -grade:lat -sqft_living:lat -sqft_above)
-summary(model7)
-# Validation
-pred7<-predict(model7, newdata=val_set_X)
-RMSE(10^pred7, 10^val_set_y) # 180381.8
-R2(10^pred7, 10^val_set_y) # 0.7668159
-
-# # Model 7: takes into account every interaction between variables
-# rhs <- paste(colnames(train)[-19], collapse=' + ')
-# rhs <- paste('(', rhs, ')^2', sep='')
-# lhs <- 'price ~'
-# formula7 <- as.formula(paste(lhs, rhs))
-# model7 <- lm(formula7, data=train)
-# summary(model7)
-# pred7<-predict(model7, newdata=val_set_X)
-# RMSE(10^pred7, 10^val_set_y)
-# R2(10^pred7, 10^val_set_y)
-# Execute automatic feature selection
-regfit.full <- regsubsets(formula7, method="backward", data=train, really.big=T)
-summary(regfit.full)
-
-reg.summary <- summary(regfit.full)
-
-# elements of reg.summary
-names(reg.summary)
-
-# R^2 statistic for the best model of every subset group
-reg.summary$rsq
-reg.summary$bic
-
-#
-# second group of plots
-#
-
-plot(regfit.full,scale="r2")
-plot(regfit.full,scale="adjr2")
-plot(regfit.full,scale="Cp")
-plot(regfit.full,scale="bic")
-
-# Cp best
-coef(regfit.full,8)
-
-# BIC best
-coef(regfit.full,4)
-
-#
-# first group of plots
-#
-par(mfrow=c(2,2))
-
-# panel 1
-plot(reg.summary$rss,xlab="Number of Variables",ylab="RSS",type="l")
-
-# panel 2
-plot(reg.summary$adjr2,xlab="Number of Variables",ylab="Adjusted RSq",type="l")
-which.max(reg.summary$adjr2)
-points(7,reg.summary$adjr2[7], col="red",cex=2,pch=20)
-
-# panel 3
-plot(reg.summary$cp,xlab="Number of Variables",ylab="Cp",type='l')
-which.min(reg.summary$cp)
-points(6,reg.summary$cp[6],col="red",cex=2,pch=20)
-
-# panel 4
-plot(reg.summary$bic,xlab="Number of Variables",ylab="BIC",type='l')
-which.min(reg.summary$bic)
-points(4,reg.summary$bic[4],col="red",cex=2,pch=20)
-
-par(mfrow=c(1,1))
-
 
 

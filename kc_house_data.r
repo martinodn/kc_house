@@ -20,6 +20,7 @@ library(rpart.plot)
 fillColor = "#FFA07A"
 fillColor2 = "#F1C40F"
 
+#import the dataset
 kc_house<-read.csv("kc_house_data.csv")
 
 #TODO: dove abbiamo preso i dati, spiegare ogni colonna cosa significa
@@ -157,12 +158,12 @@ any(sqft_diff!=0)
 kc_house<-kc_house[,-12]
 
 #we plot the distribution of sqft_lot
-hist(kc_house$sqft_lot, main= "sqft_lot distribution", xlab = "sqft_lot")
+hist(kc_house$sqft_lot, breaks=30,main= "sqft_lot distribution", xlab = "sqft_lot")
 #we can see that this feature has a really bad distribution, so we can try applying the log10 to it.
 kc_house[5]<-log10(kc_house$sqft_lot)
 kc_house[18]<-log10(kc_house$sqft_lot15)
 
-hist(kc_house$sqft_lot, breaks=50, main = "Histogram of dimensions of lots")
+hist(kc_house$sqft_lot, breaks=40, main = "Histogram of dimensions of lots")
 
 
 #We want to see the type of houses we're dealing with; thus, we check the distribution of the grade of the
@@ -260,6 +261,7 @@ kc_house %>%
   coord_flip() + 
   theme_bw()
 
+
 #BATHROOMS (cor=0.55082290)
 boxplot(price~bathrooms, xlab="bathrooms", ylab="price",main="Price by bathrooms")
 # Also in this case, and more than for the previous one, it is clear that if we increase the number of 
@@ -267,7 +269,7 @@ boxplot(price~bathrooms, xlab="bathrooms", ylab="price",main="Price by bathrooms
 
 kc_house %>%
   group_by(bathrooms) %>%
-  summarise(PriceMedian = median(10**(price), na.rm = TRUE)) %>%
+  summarise(PriceMedian = round(median(10**(price)),0), na.rm = TRUE) %>%
   ungroup() %>%
   mutate(bathrooms = reorder(bathrooms,PriceMedian)) %>%
   arrange(desc(PriceMedian)) %>%
@@ -278,7 +280,7 @@ kc_house %>%
   geom_text(aes(x = bathrooms, y = 1, label = paste0(" ", PriceMedian, sep="")),
             hjust=0, vjust=.5, size = 4, colour = 'black',
             fontface = 'bold') +
-  labs(x = 'bathrooms', y = 'Median Price', title = 'bathrooms and Median Price') +
+  labs(x = 'bathrooms', y = 'Median Price', title = 'Median Price per number of bathrooms') +
   coord_flip() + 
   theme_bw()
 
@@ -428,7 +430,8 @@ colcode <- plotclr[colornum] # assign color
 plot.angle <- 290
 # 3D Scatter plot
 scatterplot3d(kc_house$long, kc_house$lat, plotvar, type="h", angle=plot.angle, color=colcode, pch=20, cex.symbols=2, 
-              col.axis="gray", col.grid="gray", xlab="Longitude", ylab="Latitude", zlab="Price")
+              col.axis="gray", col.grid="gray", xlab="Longitude", ylab="Latitude", zlab="Price", 
+              main="Price as a function of latitude and longitude")
 
 
 
@@ -529,6 +532,9 @@ for(i in 1:length(features)) {
   models[i,4] <- sm$r.squared - curr_sm$r.squared
   models[i,5] <- sm$adj.r.squared - curr_sm$adj.r.squared
 }
+
+# table for visualisation of results
+# View(models)
 # Find the feature which causes the greatest decrease in R2 value when deleted
 models[which.max(models[,4]),1]
 # Order the matrix by r2 difference
@@ -536,9 +542,44 @@ models <- models[order(as.numeric(models[,4]), decreasing=TRUE),]
 # Show models
 fix(models)
 # Plot the features "importance"
-plot(models[,4], xlab="", ylab="R2 difference", main="R2 feature importance", xaxt='n', type='p')
+plot(models[,4], xlab="", ylab="R2 difference", main="Feature importance by R2 reduction", xaxt='n', type='p')
 # Add labels  
 axis(1, at=1:length(models[,1]), labels=models[,1], las=2)
+
+
+#Calculation of variable importance for regression in another way
+fitControl <- trainControl(method="cv",number = 10)
+model_1 = train(price~ ., data = kc_house, method = "lm",trControl = fitControl,metric="RMSE")
+importance_model_1 = varImp(model_1)
+
+# we then plot 
+
+PlotImportance = function(importance)
+{
+  varImportance <- data.frame(Variables = row.names(importance[[1]]), 
+                              Importance = round(importance[[1]]$Overall,2))
+  
+  # Create a rank variable based on importance
+  rankImportance <- varImportance %>% 
+    mutate(Rank = paste0('#',dense_rank(desc(Importance))))
+  
+  rankImportancefull = rankImportance
+  
+  ggplot(rankImportance, aes(x = reorder(Variables, Importance), 
+                             y = Importance)) +
+    geom_bar(stat='identity',colour="white", fill=fillColor) +
+    geom_text(aes(x = Variables, y = 1, label = Rank, color="blue"),
+              hjust=0, vjust=.5, size = 4, colour = 'black',
+              fontface = 'bold') +
+    labs(x = 'Variables', title = 'Relative Variable Importance') +
+    coord_flip() + 
+    theme_bw()
+}
+
+PlotImportance(importance_model_1)
+
+# we can notice, in fact, that the last two features (sqft_above, long) are the first to be
+# deleted when doing backward variable selection!
 
 # Plot of price as function of the covariates, taken one by one
 # Note that heare only the best 7 covariates, by importance given by r2 difference, are taken
@@ -852,12 +893,7 @@ palette = colorRampPalette(c("green", "white", "red")) (20)
 heatmap(x = cor(kc_house), col = palette, symm = TRUE)
 #############
 
-# we want somehow to understand what are the most important feature for a good prediction
 
-#Calculation of variable importance for regression: the absolute value of the t-statistic for each model parameter is used.
-fitControl <- trainControl(method="cv",number = 10)
-KCHouseDataModel = train(formula1, data = train_set, method = "lm",trControl = fitControl,metric="RMSE")
-importance = varImp(KCHouseDataModel)
 
 # we can design a CV with regularization also:
 # trained <- list()
@@ -907,29 +943,10 @@ importance = varImp(KCHouseDataModel)
 # row.names(importance6[[1]])
 # importance6[[1]]
 # typeof(importance6[[1]])
-PlotImportance = function(importance)
-{
-  varImportance <- data.frame(Variables = row.names(importance[[1]]), 
-                              Importance = round(importance[[1]]$Overall,2))
-  
-  # Create a rank variable based on importance
-  rankImportance <- varImportance %>% 
-    mutate(Rank = paste0('#',dense_rank(desc(Importance))))
-  
-  rankImportancefull = rankImportance
-  
-  ggplot(rankImportance, aes(x = reorder(Variables, Importance), 
-                             y = Importance)) +
-    geom_bar(stat='identity',colour="white", fill=fillColor) +
-    geom_text(aes(x = Variables, y = 1, label = Rank, color="blue"),
-              hjust=0, vjust=.5, size = 4, colour = 'black',
-              fontface = 'bold') +
-    labs(x = 'Variables', title = 'Relative Variable Importance') +
-    coord_flip() + 
-    theme_bw()
-}
 
-PlotImportance(importance)
+# TODO: We want to plot the most important features of our best model
+
+
 PlotImportance(importance2)
 PlotImportance(importance4)
 # PlotImportance(importance6)

@@ -540,7 +540,7 @@ models[which.max(models[,4]),1]
 # Order the matrix by r2 difference
 models <- models[order(as.numeric(models[,4]), decreasing=TRUE),]
 # Show models
-fix(models)
+# fix(models)
 # Plot the features "importance"
 plot(models[,4], xlab="", ylab="R2 difference", main="Feature importance by R2 reduction", xaxt='n', type='p')
 # Add labels  
@@ -578,6 +578,10 @@ PlotImportance = function(importance)
 
 PlotImportance(importance_model_1)
 
+# The same result can be achieved looking at the decision tree fitted on the data
+fit <- rpart(formula1, data = kc_house)
+rpart.plot(fit, digits = 3)
+
 # we can notice, in fact, that the last two features (sqft_above, long) are the first to be
 # deleted when doing backward variable selection!
 
@@ -602,19 +606,6 @@ boxplot(train_set$price, main="Train", ylim=c(4.5,7))
 boxplot(test_set$price, main="Test", ylim=c(4.5,7))
 par(mfrow=c(1,1))
 
-###########
-# automatic backward feature selection
-# regfit.back <- regsubsets(price~.,data=train_set, nvmax=18,method="backward")
-# summary(regfit.back)
-# reg.summary <- summary(regfit.back)
-# 
-# plot(reg.summary$rss,xlab="Number of Variables",ylab="RSS",type="l")
-# plot(reg.summary$adjr2,xlab="Number of Variables",ylab="Adjusted RSq",type="l")
-# which.max(reg.summary$adjr2)
-# points(18,reg.summary$adjr2[18], col="red",cex=2,pch=20)
-# plot(reg.summary$cp,xlab="Number of Variables",ylab="Cp",type='l')
-# plot(reg.summary$bic,xlab="Number of Variables",ylab="BIC",type='l')
-
 
 # We want to find the best model of grade 1: first of all we try considering the 18 best models
 # (one for each number of variables) and then with the step function, using Schwarz Information Criterion as metrics.
@@ -634,23 +625,6 @@ max_var=18
 #find the best model per number of predictors
 regfit.best <- regsubsets(price~ ., data=train_set, nvmax=max_var, method="backward")
 reg.summary <- summary(regfit.best)
-# model matrix construction 
-# test.mat <- model.matrix(price~ .,data=kc_house[test,])
-# test.mat
-# colnames(test.mat)
-
-# RMSE on the test set
-# val.errors=rep(NA,max_var)
-# for(i in 1:max_var){
-#   coefi <- coef(regfit.best,id=i)
-#   pred <- test.mat[,names(coefi)]%*%coefi
-#   val.errors[i] <- sqrt(mean((kc_house$price[test]-pred)^2))
-# }
-# 
-# val.errors
-# best<-which.min(val.errors)
-# 
-# coef(regfit.best, best)
 
 
 # K-fold cross-validation
@@ -717,12 +691,16 @@ full.mod <- lm(price~ ., data=train_set)
 step.mod <- step(full.mod, steps=1000, k=log(n), trace=1, direction="backward")
 formula1 <- step.mod$call$formula
 
+
 # Try using the AIC as metric for the selection 
 
 full.mod <- lm(price~ ., data=train_set)
 step.mod <- step(full.mod, steps=1000, trace=1, direction="backward")
 formula1 <- step.mod$call$formula
 
+model1 <- lm(formula1, data=train_set)
+par(mfrow=c(2,2))
+plot(model1)
 
 # NOTE: the BIC penalize more in the number of varialbles (the optimal number according to BIC is 
 # 16), while with AIC we get the same model obtained in the previous procedure, the one
@@ -859,33 +837,16 @@ cv.errors <- c(cv.error1, cv.error2, cv.error3, cv.error4, cv.error5)
 plot(cv.errors, type="l", main="RMSE of the different models", xlab="Degree of the model")
 
 # Define the final model
-final_model <- glm(formula5, data = train_set)
+final_model <- glm(formula5, data = train_set) #polynomial (degree 5)
+basic_model <- glm(formula1, data = train_set) #linear (degree 1)
 
 # Prediction over the test set with the final model
-prediction <- predict(final_model, test_set[,-19])
+prediction_final_model <- predict(final_model, test_set[,-19])
+prediction_basic_model <- predict(basic_model, test_set[,-19])
 
-#Errors with prediction
-postResample(10**(prediction),10**(test_set[,19]))
-
-
-
-#VERY IMPORTANT! THIS COULD BE THE SOLUTION
-# par(mfrow=c(1,1))
-# library(glmnet)
-# fit = glmnet(as.matrix(train_set[,-19]), as.vector(train_set[,19]))
-# plot(fit)
-# 
-# cvfit = cv.glmnet(as.matrix(train_set[,-19]), as.vector(train_set[,19]))
-# plot(cvfit)
-# 
-# fit$lambda
-# fit$call
-# 
-# predict(fit, as.matrix(test_set[,-19]))
-# 
-# colnames(kc_house)
-# 
-# step.mod$call
+# Errors with prediction using polynomial model and basic one
+postResample(10**(prediction_final_model),10**(test_set[,19]))
+postResample(10**(prediction_basic_model),10**(test_set[,19]))
 
 
 ###########
@@ -893,92 +854,10 @@ palette = colorRampPalette(c("green", "white", "red")) (20)
 heatmap(x = cor(kc_house), col = palette, symm = TRUE)
 #############
 
+# We want to plot the most important features of our best model
+best_model = train(formula5, data = train_set, method = "lm",trControl = fitControl,metric="RMSE")
+importance_best_model = varImp(best_model)
+PlotImportance(importance_best_model)
 
-
-# we can design a CV with regularization also:
-# trained <- list()
-# formulas <- list(formula1, formula2, formula3, formula4, formula5)
-# best_rmse <- c() # Best RMSE score per formula
-# best_r2 <- c() # Best R2 score per formula
-# # Train every formula using CV
-# for (i in 1:length(formulas)) {
-#   trained[[i]] <- train(formulas[[i]], data=train_set, method="glmnet", trControl=fitControl, metric="RMSE")
-#   # Save best RMSE
-#   best_rmse <- c(best_rmse, min(trained[[i]]$results$RMSE))
-#   # Save best R2
-#   best_r2 <- c(best_r2, max(trained[[i]]$results$Rsquared))
-# }
-# 
-# par(mfrow=c(1,2))
-# # Plot of RMSE
-# plot(best_rmse, main="RMSE per formula", xlab="Formula", ylab="RMSE")
-# # Plot of R2
-# plot(best_r2, main="R2 per formula", xlab="Formula", ylab="R2")
-# par(mfrow=c(1,1))
-
-# Training of lm on the whole training set
-# best_lm <- lm(trained[[3]], data=train_set)
-# Predict values using test set
-# pred <- predict(trained[[3]], newdata=test_set)
-# obs <- test_set[,19]
-# # Compute RMSE
-# RMSE(pred, obs)
-# # Compute R2
-# R2(pred, obs)
-
-# # ensure the results are repeatable
-# set.seed(7)
-# # define the control using a random forest selection function
-# control6 <- rfeControl(functions=rfFuncs, method="cv", number=10)
-# # run the RFE algorithm
-# results <- rfe(train_set[,-19], train_set[,19], sizes=5, rfeControl=control6)
-# # summarize the results
-# print(results)
-# # list the chosen features
-# predictors(results)
-# # plot the results
-# plot(results, type=c("g", "o"))
-# 
-# # 
-# row.names(importance6[[1]])
-# importance6[[1]]
-# typeof(importance6[[1]])
-
-# TODO: We want to plot the most important features of our best model
-
-
-PlotImportance(importance2)
-PlotImportance(importance4)
-# PlotImportance(importance6)
-
-set.seed(10)
-
-
-lmProfile$variables
-# KCHouseData2 = kc_house %>%
-#   select(-date)
-# set.seed(13)
-
-
-PlotImportance(importance)
-
-formula<-price~ .
-
-xgbGrid <- expand.grid(nrounds = 500,
-                       max_depth = 4,
-                       eta = .05,
-                       gamma = 0,
-                       colsample_bytree = .5,
-                       min_child_weight = 1,
-                       subsample = 1)
-
-fitControl <- trainControl(method="cv",number = 10)
-t = train(formula, data = train_set,
-                            method = "xgbTree",trControl = fitControl,
-                            tuneGrid = xgbGrid,na.action = na.pass,metric="RMSE")
-
-importance = varImp(t)
-
-PlotImportance(importance)
 
 

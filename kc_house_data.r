@@ -575,7 +575,7 @@ PlotImportance = function(importance)
 PlotImportance(importance_model_1)
 
 # The same result can be achieved looking at the decision tree fitted on the data
-fit <- rpart(formula1, data = kc_house)
+fit <- rpart(price~ ., data = kc_house)
 rpart.plot(fit, digits = 3)
 
 # we can notice, in fact, that the last two features (sqft_above, long) are the first to be
@@ -665,7 +665,7 @@ mean.cv.errors
 #number of variables in the best model
 which.min(mean.cv.errors)
 
-#error with the best model (17 variables)
+#error with the best model (18 variables)
 mean.cv.errors[which.min(mean.cv.errors)]
 
 plot(mean.cv.errors, type="l", main="RMSE for each model", xlab="Number of variables in the model",
@@ -698,9 +698,8 @@ model1 <- lm(formula1, data=train_set)
 par(mfrow=c(1,1))
 plot(model1)
 
-# NOTE: the BIC penalize more in the number of varialbles (the optimal number according to BIC is 
-# 16), while with AIC we get the same model obtained in the previous procedure, the one
-# considering the 18 best model (one model for each number of variables).
+# NOTE: the BIC penalize more in the number of variables (the optimal number according to BIC is 
+# 16), while with AIC we get the a model with one more variable.
 
 # cv.glm function: The data is divided randomly into K groups. For each group the
 # linear model is fit to data omitting that group, then the function cost (by default the 

@@ -859,5 +859,3 @@ best_model = train(formula5, data = train_set, method = "lm",trControl = fitCont
 importance_best_model = varImp(best_model)
 PlotImportance(importance_best_model)
 
-
-

@@ -37,21 +37,17 @@ new.date<-new.date-(sort(new.date))[1]
 kc_house[2]<-as.numeric(new.date)
 kc_house
 
-#check the number of duplicated ids
-length(kc_house$id) - length(unique(kc_house$id))
-#since id is not unique, we retrieve rows with duplicated id
-#duplicated(id)
-d<-kc_house[duplicated(kc_house$id),]
-dim(d)
-#we note that there are some duplicates wrt id and date
-#we suppose, by observations, that a specific id corresponds to a specific date
-d<-kc_house[duplicated(kc_house$id, kc_house$date),]
-dim(d)
-#we want to check whether they are the same rows
-all(duplicated(kc_house$id)==duplicated(kc_house$id,kc_house$date))
+# We note that there are some duplicated id (a ID is linked to a specific house), that are less
+# than 1% of the data. Hence, since we want to keep the latest evaluation of the houses, we get 
+# rid of the previous price of the house (the house have been, in the meantime, renovated and this
+# effect are not registered in the dataset).
+kc_house <- kc_house[order(kc_house$date, decreasing = TRUE), ]
+
+kc_house<-kc_house[!duplicated(kc_house$id),]
 #our observation is confirmed by this check
 #hence, id not useful to understand data and to predict
 kc_house<-kc_house[-1]
+kc_house
 
 # kc_house
 dim(kc_house)
@@ -699,7 +695,7 @@ step.mod <- step(full.mod, steps=1000, trace=1, direction="backward")
 formula1 <- step.mod$call$formula
 
 model1 <- lm(formula1, data=train_set)
-par(mfrow=c(2,2))
+par(mfrow=c(1,1))
 plot(model1)
 
 # NOTE: the BIC penalize more in the number of varialbles (the optimal number according to BIC is 
@@ -838,6 +834,9 @@ plot(cv.errors, type="l", main="RMSE of the different models", xlab="Degree of t
 
 # Define the final model
 final_model <- glm(formula5, data = train_set) #polynomial (degree 5)
+par(mfrow=c(1,1))
+plot(final_model)
+
 basic_model <- glm(formula1, data = train_set) #linear (degree 1)
 
 # Prediction over the test set with the final model

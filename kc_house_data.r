@@ -153,18 +153,21 @@ any(sqft_diff!=0)
 #we delete the column sqft_basement because it add no infos and it can be add in future if we want (lossless delete)
 kc_house<-kc_house[,-12]
 
+summary(kc_house)
+
 #we plot the distribution of sqft_lot
 hist(kc_house$sqft_lot, breaks=30,main= "sqft_lot distribution", xlab = "sqft_lot")
+hist(kc_house$sqft_lot15, breaks=30,main= "sqft_lot15 distribution", xlab = "sqft_lot15")
 #we can see that this feature has a really bad distribution, so we can try applying the log10 to it.
 kc_house[5]<-log10(kc_house$sqft_lot)
 kc_house[18]<-log10(kc_house$sqft_lot15)
 
-hist(kc_house$sqft_lot, breaks=40, main = "Histogram of dimensions of lots")
+hist(kc_house$sqft_lot, breaks=30, main = "log(sqft_lot) distribution", xlab= "sqft_lot")
 
 
 #We want to see the type of houses we're dealing with; thus, we check the distribution of the grade of the
 #houses and we compare it to a normal distribution.
-hist(kc_house$price, breaks = 1000, main = "Price frequency", xlab="Price")
+hist(kc_house$price, breaks = 30, main = "Price frequency", xlab="Price")
 
 out_threshold<-min(boxplot(kc_house$price)$out)
 
@@ -182,7 +185,7 @@ qqnorm(kc_house$price)
 qqnorm(log10(kc_house$price))
 #we also log the price
 kc_house[19]<-log10(kc_house[19])
-hist(kc_house$price, breaks = 100, main= "Frequency of log(price)", xlab = "log(price)")
+hist(kc_house$price, breaks = 30, main= "Frequency of log(price)", xlab = "log(price)")
 dim(kc_house)
 
 
@@ -247,7 +250,7 @@ kc_house %>%
   arrange(desc(PriceMedian)) %>%
 
   ggplot(aes(x = bedrooms,y = PriceMedian)) +
-  geom_bar(stat='identity',colour="white", fill = "yellow") +
+  geom_bar(stat='identity',colour="white", fill = "lightblue") +
   geom_text(aes(x = bedrooms, y = 1, label = paste0(" ",PriceMedian, sep="")),
             hjust=0, vjust=.5, size = 4, colour = 'black',
             fontface = 'bold') +
@@ -362,7 +365,7 @@ plot(price~yr_last_renovation)
 lines(loess.smooth(yr_last_renovation, price), col=5)
 # Plot using the means
 average_price_ylr <-aggregate(price~yr_last_renovation, FUN=mean, data=kc_house)
-plot(average_price_ylr, col=1,main="Average price by above dimension", ylim=c(4.9,6.7))
+plot(average_price_ylr, col=1,main="Average price by year of last renovation", ylim=c(4.9,6.7))
 lines(loess.smooth(yr_last_renovation, price), col=5)
 
 # LAT (cor=0.44916082)
@@ -423,7 +426,7 @@ nclr <- 8 # number of colors
 plotclr <- brewer.pal(nclr, "PuBu") # get the colors
 colornum <- cut(rank(plotvar), nclr, labels=FALSE)
 colcode <- plotclr[colornum] # assign color
-plot.angle <- 290
+plot.angle <- 70
 # 3D Scatter plot
 scatterplot3d(kc_house$long, kc_house$lat, plotvar, type="h", angle=plot.angle, color=colcode, pch=20, cex.symbols=2, 
               col.axis="gray", col.grid="gray", xlab="Longitude", ylab="Latitude", zlab="Price", 
@@ -692,10 +695,10 @@ formula1 <- step.mod$call$formula
 
 full.mod <- lm(price~ ., data=train_set)
 step.mod <- step(full.mod, steps=1000, trace=1, direction="backward")
-formula1 <- step.mod$call$formula
 
+formula1 <- step.mod$call$formula
 model1 <- lm(formula1, data=train_set)
-par(mfrow=c(1,1))
+par(mfrow=c(2,2))
 plot(model1)
 
 # NOTE: the BIC penalize more in the number of variables (the optimal number according to BIC is 
@@ -827,13 +830,13 @@ cv.error5
 
 # Define the vector of errors
 cv.errors <- c(cv.error1, cv.error2, cv.error3, cv.error4, cv.error5)
-
+par(mfrow=c(1,1))
 # Plot the errors (RMSE) according to the degree of the model
 plot(cv.errors, type="l", main="RMSE of the different models", xlab="Degree of the model")
 
 # Define the final model
 final_model <- glm(formula5, data = train_set) #polynomial (degree 5)
-par(mfrow=c(1,1))
+par(mfrow=c(2,2))
 plot(final_model)
 
 basic_model <- glm(formula1, data = train_set) #linear (degree 1)
@@ -857,3 +860,6 @@ best_model = train(formula5, data = train_set, method = "lm",trControl = fitCont
 importance_best_model = varImp(best_model)
 PlotImportance(importance_best_model)
 
+##trees
+fit <- rpart(price~ ., data = kc_house)
+rpart.plot(fit, digits = 3)

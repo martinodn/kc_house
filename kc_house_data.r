@@ -29,6 +29,7 @@ kc_house<-read.csv("kc_house_data.csv")
 dim(kc_house)
 
 
+
 #convert date from string to observation number of the day (starting from 1)
 new.date<-as.Date(kc_house$date,'%Y%m%d')
 new.date<-new.date-(sort(new.date))[1]
@@ -80,10 +81,6 @@ kc_house<-kc_house[,c("date", "bedrooms", "bathrooms", "sqft_living","sqft_lot",
            "sqft_lot15", "price")]
 
 kc_house
-
-
-
-
 
 
 
@@ -152,7 +149,9 @@ any(sqft_diff!=0)
 
 #we delete the column sqft_basement because it add no infos and it can be add in future if we want (lossless delete)
 kc_house<-kc_house[,-12]
-
+kc_house<-kc_house[,c("date", "bedrooms", "bathrooms", "sqft_living","sqft_lot", "floors", "waterfront","view","condition",
+                      "grade", "sqft_above", "yr_built", "yr_last_renovation",  "lat", "long","sqft_living15", 
+                      "sqft_lot15", "price")]
 summary(kc_house)
 
 #we plot the distribution of sqft_lot
@@ -160,7 +159,7 @@ hist(kc_house$sqft_lot, breaks=30,main= "sqft_lot distribution", xlab = "sqft_lo
 hist(kc_house$sqft_lot15, breaks=30,main= "sqft_lot15 distribution", xlab = "sqft_lot15")
 #we can see that this feature has a really bad distribution, so we can try applying the log10 to it.
 kc_house[5]<-log10(kc_house$sqft_lot)
-kc_house[18]<-log10(kc_house$sqft_lot15)
+kc_house[17]<-log10(kc_house$sqft_lot15)
 
 hist(kc_house$sqft_lot, breaks=30, main = "log(sqft_lot) distribution", xlab= "sqft_lot")
 
@@ -184,10 +183,16 @@ qqnorm(kc_house$price)
 #becomes really close to a Normal one. We are going to use this later.
 qqnorm(log10(kc_house$price))
 #we also log the price
-kc_house[19]<-log10(kc_house[19])
+kc_house[18]<-log10(kc_house[18])
 hist(kc_house$price, breaks = 30, main= "Frequency of log(price)", xlab = "log(price)")
 dim(kc_house)
 
+
+
+
+# Plot correlation between covariates
+par(mfrow=c(1,1))
+corrplot(cor(kc_house))
 
 attach(kc_house)
 
@@ -217,8 +222,7 @@ map.kc
 
 # Print a table containing correlation between covariables
 cor(kc_house)
-# Plot correlation between covariates
-corrplot(cor(kc_house))
+
 
 # DATE (cor=-0.00570)
 # We notice we have a continuous detection for the dates: almost every day (starting from the initial one)
@@ -387,36 +391,36 @@ lines(loess.smooth(long, price), col=5)
 # The logitude seems to be less correlated with price
 
 # ZIPCODE (cor=0.03831967)
-plot(price~zipcode)
-lines(loess.smooth(zipcode, price), col=5)
+# plot(price~zipcode)
+# lines(loess.smooth(zipcode, price), col=5)
 # Plot using the means
-average_price_zc <-aggregate(price~zipcode, FUN=mean, data=kc_house)
-plot(average_price_zc, col=1,main="Average price by zipcode", ylim=c(5,6.8))
-lines(loess.smooth(zipcode, price), col=5)
+# average_price_zc <-aggregate(price~zipcode, FUN=mean, data=kc_house)
+# plot(average_price_zc, col=1,main="Average price by zipcode", ylim=c(5,6.8))
+# lines(loess.smooth(zipcode, price), col=5)
 # Plots using boxplots
-boxplot(price~zipcode)
-
-# Since we suspect a strong correlation between LONG, LAT and ZIPCODE, we plot them on the map
-# There are 70 zipcodes
-n_zipcodes <- length(unique(zipcode))
-# Define colors scheme (randomly)
-set.seed(3)
-# Select one different color per zipcode
-palette <- randomColor(n_zipcodes)
-# Set location bounds (King County)
-location <- c(-123.25, 47.15, -121.25, 47.9)
-# Fetch the map (osm = OpenStreetMap)
-map <- get_map(location=location, source="osm")
-# Plot the points on the map using lat and long, while the color is given by the zipcode
-plt <- ggmap(map)
-plt <- plt + geom_point(data=kc_house, aes(x=long, y=lat, col=as.factor(zipcode)))
-plt <- plt + theme(legend.position='none')
-plt <- plt + scale_colour_manual(values=palette)
-plt
-
-# We hence try to fit a linear model to predict correlation between LONG, LAT and ZIPCODE
-lm_zipcode <- lm(zipcode ~ long + lat, data=kc_house)
-summary(lm_zipcode)
+# boxplot(price~zipcode)
+# 
+# # Since we suspect a strong correlation between LONG, LAT and ZIPCODE, we plot them on the map
+# # There are 70 zipcodes
+# n_zipcodes <- length(unique(zipcode))
+# # Define colors scheme (randomly)
+# set.seed(3)
+# # Select one different color per zipcode
+# palette <- randomColor(n_zipcodes)
+# # Set location bounds (King County)
+# location <- c(-123.25, 47.15, -121.25, 47.9)
+# # Fetch the map (osm = OpenStreetMap)
+# map <- get_map(location=location, source="osm")
+# # Plot the points on the map using lat and long, while the color is given by the zipcode
+# plt <- ggmap(map)
+# plt <- plt + geom_point(data=kc_house, aes(x=long, y=lat, col=as.factor(zipcode)))
+# plt <- plt + theme(legend.position='none')
+# plt <- plt + scale_colour_manual(values=palette)
+# plt
+# 
+# # We hence try to fit a linear model to predict correlation between LONG, LAT and ZIPCODE
+# lm_zipcode <- lm(zipcode ~ long + lat, data=kc_house)
+# summary(lm_zipcode)
 # The linear model does not provide a significantly high R squared value, hence we can keep all the variables
 
 # PRICE with respect to LAT and LONG
@@ -514,9 +518,9 @@ model <- lm(price~ ., data=kc_house)
 sm <- summary(model)
 
 # Definition of an empty matrix which contains model, R2, adjusted R2
-models <- matrix(data=NA, nrow=18, ncol=5, dimnames=list(c(), c('deleted', 'r2', 'adj.r2', 'diff.r2', 'diff.adj.r2')))
+models <- matrix(data=NA, nrow=17, ncol=5, dimnames=list(c(), c('deleted', 'r2', 'adj.r2', 'diff.r2', 'diff.adj.r2')))
 # Define the features names 
-features <- colnames(kc_house)[-19]
+features <- colnames(kc_house)[-18]
 # Loop through every model combination without a single feature
 for(i in 1:length(features)) {
   # Define a linear model without the current feature
@@ -619,7 +623,7 @@ par(mfrow=c(1,1))
 #has the smaller error in the prediction
 
 #maximum number of predictors
-max_var=18
+max_var=17
 
 #find the best model per number of predictors
 regfit.best <- regsubsets(price~ ., data=train_set, nvmax=max_var, method="backward")
@@ -668,7 +672,7 @@ mean.cv.errors
 #number of variables in the best model
 which.min(mean.cv.errors)
 
-#error with the best model (18 variables)
+#error with the best model (17 variables)
 mean.cv.errors[which.min(mean.cv.errors)]
 
 plot(mean.cv.errors, type="l", main="RMSE for each model", xlab="Number of variables in the model",
@@ -693,10 +697,10 @@ formula1 <- step.mod$call$formula
 
 # Try using the AIC as metric for the selection 
 
-full.mod <- lm(price~ ., data=train_set)
-step.mod <- step(full.mod, steps=1000, trace=1, direction="backward")
-
-formula1 <- step.mod$call$formula
+# full.mod <- lm(price~ ., data=train_set)
+# step.mod <- step(full.mod, steps=1000, trace=1, direction="backward")
+# 
+# formula1 <- step.mod$call$formula
 model1 <- lm(formula1, data=train_set)
 par(mfrow=c(2,2))
 plot(model1)
@@ -729,7 +733,6 @@ full.mod <- lm(price~date+I(date^2)+
               +sqft_above+I(sqft_above^2)
               +yr_built+I(yr_built^2)
               +yr_last_renovation+I(yr_last_renovation^2)
-              +zipcode+I(zipcode^2)
               +lat+I(lat^2)
               +long+I(long^2)
               +sqft_living15+I(sqft_living15^2)
@@ -757,7 +760,7 @@ full.mod <- lm(price~date+I(date^2)+I(date^3)+
             +sqft_above+I(sqft_above^2)+I(sqft_above^3)
             +yr_built+I(yr_built^2)+I(yr_built^3)
             +yr_last_renovation+I(yr_last_renovation^2)+I(yr_last_renovation^3)
-            +zipcode+I(zipcode^2)+I(zipcode^3)
+#           +zipcode+I(zipcode^2)+I(zipcode^3)
             +lat+I(lat^2)+I(lat^3)
             +long+I(long^2)+I(long^3)
             +sqft_living15+I(sqft_living15^2)+I(sqft_living15^3)
@@ -785,7 +788,7 @@ full.mod <- lm(price~date+I(date^2)+I(date^3)+I(date^4)
             +sqft_above+I(sqft_above^2)+I(sqft_above^3)+I(sqft_above^4)
             +yr_built+I(yr_built^2)+I(yr_built^3)+I(yr_built^4)
             +yr_last_renovation+I(yr_last_renovation^2)+I(yr_last_renovation^3)+I(yr_last_renovation^4)
-            +zipcode+I(zipcode^2)+I(zipcode^3)+I(zipcode^4)
+#            +zipcode+I(zipcode^2)+I(zipcode^3)+I(zipcode^4)
             +lat+I(lat^2)+I(lat^3)+I(lat^4)
             +long+I(long^2)+I(long^3)+I(long^4)
             +sqft_living15+I(sqft_living15^2)+I(sqft_living15^3)+I(sqft_living15^4)
@@ -813,7 +816,7 @@ full.mod <- lm(price~date+I(date^2)+I(date^3)+I(date^4)+I(date^5)
                +sqft_above+I(sqft_above^2)+I(sqft_above^3)+I(sqft_above^4)+I(sqft_above^5)
                +yr_built+I(yr_built^2)+I(yr_built^3)+I(yr_built^4)+I(yr_built^5)
                +yr_last_renovation+I(yr_last_renovation^2)+I(yr_last_renovation^3)+I(yr_last_renovation^4)+I(yr_last_renovation^5)
-               +zipcode+I(zipcode^2)+I(zipcode^3)+I(zipcode^4)+I(zipcode^5)
+#              +zipcode+I(zipcode^2)+I(zipcode^3)+I(zipcode^4)+I(zipcode^5)
                +lat+I(lat^2)+I(lat^3)+I(lat^4)+I(lat^5)
                +long+I(long^2)+I(long^3)+I(long^4)+I(long^5)
                +sqft_living15+I(sqft_living15^2)+I(sqft_living15^3)+I(sqft_living15^4)+I(sqft_living^5)
@@ -842,12 +845,12 @@ plot(final_model)
 basic_model <- glm(formula1, data = train_set) #linear (degree 1)
 
 # Prediction over the test set with the final model
-prediction_final_model <- predict(final_model, test_set[,-19])
-prediction_basic_model <- predict(basic_model, test_set[,-19])
+prediction_final_model <- predict(final_model, test_set[,-18])
+prediction_basic_model <- predict(basic_model, test_set[,-18])
 
 # Errors with prediction using polynomial model and basic one
-postResample(10**(prediction_final_model),10**(test_set[,19]))
-postResample(10**(prediction_basic_model),10**(test_set[,19]))
+postResample((prediction_final_model),(test_set[,18]))
+postResample((prediction_basic_model),(test_set[,18]))
 
 
 ###########
